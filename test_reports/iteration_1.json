@@ -1,0 +1,29 @@
+{
+  "summary": "Full backend + frontend testing of Rashisense MVP. Backend: 20/20 pytest cases pass covering auth (email + username login, /auth/me, bearer), rashi calculate (chart/gemstone/reading fields, bad-date 400, determinism, saved-when-authenticated), readings CRUD, admin stats/users/logs, 403 on user-attempting-admin. Frontend: landing, calculator (anon + authed), signup + auto-redirect to dashboard, dashboard history + delete, admin login with username 'admin' + admin control hub all render correctly.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Calculator page (unauthenticated)", "issues": ["'Tip: create a free account' link renders even during page-load race before AuthContext hydration on authenticated hard-reload; harmless but flickers briefly."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_rashisense.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py: `/api/rashi/calculate` returns full mongo document 'result' with mixed structure; response payload leaks internal 'user_id' when saved (kept in returned dict). Consider stripping user_id from response.",
+    "server.py: startup uses deprecated @app.on_event; migrate to lifespan handlers (FastAPI >=0.95). Non-blocking.",
+    "server.py CORS_ORIGINS defaults to '*' with allow_credentials=True; browsers will reject credentialed requests with wildcard. For production set explicit origins.",
+    "astro.py compute_chart treats naive datetime as UTC (no timezone conversion from birth place). Since problem statement acknowledges 'deterministic simplified Vedic model', acceptable, but ascendant computation is very approximate.",
+    "Dashboard.jsx: `.catch(() => {})` on /readings load silently swallows errors; consider surfacing a toast.",
+    "Calculator.jsx: after successful save, no dashboard refetch (fine since user navigates), but 'Tip: create a free account' text uses AuthContext user only — a quick guard on `loading` would prevent flicker."
+  ],
+  "updated_files": ["/app/backend/tests/test_rashisense.py"],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "100% of tested flows"},
+  "test_credentials": "Admin: username 'admin' / password 'Rashi@2026'. Test users registered dynamically via /api/auth/register.",
+  "seed_data_creation": "Registered several TEST users during runs (test_user_*, test_ui_*, test_flow_*, test_dbg_*) and created 1 reading; test also exercises delete so most are cleaned up. Admin panel shows 3 leftover TEST users (safe to keep).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression tests at /app/backend/tests/test_rashisense.py; run with `pytest backend/tests/test_rashisense.py -v` from /app. All UI critical flows validated end-to-end including admin login via username. Only cosmetic AuthContext hydration flicker noted; no functional bugs.",
+  "rca of the issue": "N/A — no functional issues found."
+}

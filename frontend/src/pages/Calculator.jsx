@@ -10,7 +10,7 @@ import ResultView from "../components/ResultView";
 const empty = { name: "", gender: "Male", dob: "", time: "", place: "", problem: "" };
 
 export default function Calculator() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [form, setForm] = useState(empty);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -76,7 +76,7 @@ export default function Calculator() {
             </div>
           </div>
 
-          {!user && (
+          {!user && !loading && (
             <p className="mt-4 text-center text-xs text-slate-400">Tip: <a href="/auth?mode=signup" className="text-amber-300 hover:underline">create a free account</a> to save your readings.</p>
           )}
 
