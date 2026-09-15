@@ -1,0 +1,20 @@
+{
+  "summary": "Verified new Vimshottari Dasha feature end-to-end for Koushik (2002-01-10 22:00 Kolkata). Backend: chart.dasha is contiguous, first = Mercury (9.16 yrs, ends 2011-03-11), current_dasha = Venus (is_current=true, 2018-03-11 → 2038-03-11). Moon = Vrishchika 22.81°, Nakshatra Jyeshtha. All regression fields (western_sun_sign, sun_sign, ascendant, planet_positions, planet_degrees for all 9 planets, ayanamsa, accuracy=swiss_ephemeris_lahiri, gemstone, reading) intact and chronologically contiguous periods verified. Frontend: /calculator submission renders dasha-timeline and dasha-current badge; planet chips in Kundali card show degrees (e.g. 'Vrishchika 22.81°'); Rashi(Moon) card shows Vrishchika. Full suite 37/37 pytest passing.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_dasha.py",
+    "/app/test_reports/pytest/dasha.xml",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "compute_vimshottari uses datetime.now() (naive local) compared against localized-birth-derived cursor (also naive local from birth_dt). Consistent for this app but note timezone awareness could drift if birth_dt is aware."
+  ],
+  "updated_files": ["/app/backend/tests/test_dasha.py"],
+  "success_rate": {"backend": "100% (37/37)", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Dasha feature verified. Test file test_dasha.py added covering Koushik chart. Full regression green."
+}

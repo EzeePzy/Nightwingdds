@@ -25,8 +25,12 @@ Astrology website "Rashisense" where users know their horoscope and true Vedic R
 - Backend: /api/auth/register|login|me, /api/rashi/calculate, /api/readings CRUD, /api/admin/stats|users|logs, /api/gemstones, /api/rashis.
 - Admin seeded: admin / Rashi@2026. Tested 20/20 backend + all frontend flows pass.
 
+## Implemented (later 2026)
+- Precise charts: Swiss Ephemeris (pyswisseph) + Lahiri ayanamsa + offline geocoding (geonamescache) with IANA timezone -> UTC. Verified to match a professional Rainbow Gems chart exactly (all 9 planets, Moon rashi Scorpio 22.81°, nakshatra Jyeshtha).
+- Western (tropical) Sun sign added alongside Vedic Moon Rashi to resolve the "my sign is Scorpio" confusion; result view explains Rashi = Moon sign.
+- Daily/Weekly/Yearly AI horoscope (Claude) cached per rashi+period+date. Family Profiles CRUD (save/switch birth details).
+- Vimshottari Dasha timeline computed from Moon nakshatra (matches professional chart's Mercury balance 9.16y); planetary degrees shown in Kundali.
+
 ## Backlog (P1/P2)
-- P1: Real ephemeris (Swiss Ephemeris) + timezone-by-place for astronomically accurate charts.
-- P1: Daily/Weekly/Yearly horoscope refresh (currently one personalized reading).
-- P2: Saved multiple birth profiles (family/friends), PDF export of reading.
+- P2: Antardasha (sub-periods) & Navamsa (D9) chart; PDF export of the full kundali.
 - P2: Gemstone catalog editing from admin (currently read-only), password reset flow.
