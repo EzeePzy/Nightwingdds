@@ -11,6 +11,8 @@ import Gemstones from "./pages/Gemstones";
 import Horoscope from "./pages/Horoscope";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
 
 function App() {
   return (
@@ -24,6 +26,8 @@ function App() {
             <Route path="/calculator" element={<Calculator />} />
             <Route path="/gemstones" element={<Gemstones />} />
             <Route path="/horoscope" element={<Horoscope />} />
+            <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/payment/cancel" element={<PaymentCancel />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
           </Routes>

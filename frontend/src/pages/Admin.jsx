@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Users, Sparkles, Activity, Trash2, Shield, Gem, ScrollText } from "lucide-react";
+import { Users, Sparkles, Activity, Trash2, Shield, Gem, ScrollText, Ticket, Plus, Power } from "lucide-react";
 import api, { formatApiError } from "../lib/api";
 import StarField from "../components/StarField";
 
@@ -9,6 +9,9 @@ export default function Admin() {
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
   const [gems, setGems] = useState([]);
+  const [discounts, setDiscounts] = useState([]);
+  const [newCode, setNewCode] = useState("");
+  const [newPct, setNewPct] = useState(10);
   const [tab, setTab] = useState("users");
 
   const load = () => {
@@ -17,6 +20,7 @@ export default function Admin() {
       api.get("/admin/users").then((r) => setUsers(r.data)),
       api.get("/admin/logs").then((r) => setLogs(r.data)),
       api.get("/gemstones").then((r) => setGems(r.data)),
+      api.get("/admin/discounts").then((r) => setDiscounts(r.data)),
     ]).catch((err) => toast.error(formatApiError(err.response?.data?.detail)));
   };
   useEffect(load, []);
@@ -31,10 +35,42 @@ export default function Admin() {
     }
   };
 
+  const createDiscount = async () => {
+    if (!newCode.trim()) { toast.error("Enter a code"); return; }
+    try {
+      const { data } = await api.post("/admin/discounts", { code: newCode.trim(), percent: Number(newPct) });
+      setDiscounts((d) => [data, ...d]);
+      setNewCode("");
+      toast.success(`Code ${data.code} created`);
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+
+  const toggleDiscount = async (id) => {
+    try {
+      const { data } = await api.patch(`/admin/discounts/${id}`);
+      setDiscounts((d) => d.map((x) => (x.id === id ? { ...x, active: data.active } : x)));
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+
+  const deleteDiscount = async (id) => {
+    try {
+      await api.delete(`/admin/discounts/${id}`);
+      setDiscounts((d) => d.filter((x) => x.id !== id));
+      toast.success("Code deleted");
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+
   const TABS = [
     { key: "users", label: "Users", icon: Users },
     { key: "logs", label: "Calculation Logs", icon: ScrollText },
     { key: "gems", label: "Gemstone Catalog", icon: Gem },
+    { key: "discounts", label: "Discount Codes", icon: Ticket },
   ];
 
   return (
@@ -138,6 +174,56 @@ export default function Admin() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === "discounts" && (
+          <div data-testid="admin-discounts-panel" className="space-y-5">
+            <div className="rs-card p-5">
+              <h3 className="mb-3 font-serif text-lg text-amber-100">Create a discount code</h3>
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="mb-1 block text-xs uppercase tracking-wider text-amber-400/80">Code</label>
+                  <input data-testid="discount-code-new" value={newCode} onChange={(e) => setNewCode(e.target.value.toUpperCase())} placeholder="DIWALI50" className="rounded-lg border border-amber-500/20 bg-[#090A15]/60 px-3 py-2 text-sm text-slate-100 uppercase placeholder:text-slate-500 outline-none focus:border-amber-400/60" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs uppercase tracking-wider text-amber-400/80">Discount %</label>
+                  <input data-testid="discount-percent-new" type="number" min={0} max={100} value={newPct} onChange={(e) => setNewPct(e.target.value)} className="w-24 rounded-lg border border-amber-500/20 bg-[#090A15]/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-amber-400/60" />
+                </div>
+                <button onClick={createDiscount} data-testid="discount-create-button" className="rs-gold-btn flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm"><Plus className="h-4 w-4" /> Create</button>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">Set 100% to give a free PDF. Toggle a code off anytime to disable it instantly.</p>
+            </div>
+
+            <div className="rs-card overflow-hidden">
+              <div className="overflow-x-auto rs-scrollbar">
+                <table data-testid="admin-discounts-table" className="w-full text-left text-sm">
+                  <thead className="border-b border-amber-500/20 text-amber-400/80">
+                    <tr><th className="px-5 py-3 font-medium">Code</th><th className="px-5 py-3 font-medium">Discount</th><th className="px-5 py-3 font-medium">Status</th><th className="px-5 py-3 font-medium text-right">Actions</th></tr>
+                  </thead>
+                  <tbody>
+                    {discounts.map((d) => (
+                      <tr key={d.id} className="border-b border-white/5 hover:bg-white/5">
+                        <td className="px-5 py-3 font-mono text-amber-100">{d.code}</td>
+                        <td className="px-5 py-3 text-slate-300">{d.percent}% off</td>
+                        <td className="px-5 py-3">
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs ${d.active ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-slate-400"}`}>{d.active ? "Active" : "Off"}</span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <button onClick={() => toggleDiscount(d.id)} data-testid={`discount-toggle-${d.code}`} title="Toggle on/off" className={`flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs ${d.active ? "border-emerald-500/40 text-emerald-300" : "border-slate-500/40 text-slate-400"} hover:bg-white/5`}>
+                              <Power className="h-3.5 w-3.5" /> {d.active ? "On" : "Off"}
+                            </button>
+                            <button onClick={() => deleteDiscount(d.id)} data-testid={`discount-delete-${d.code}`} className="flex h-8 w-8 items-center justify-center rounded-full border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {discounts.length === 0 && <tr><td colSpan={4} className="px-5 py-8 text-center text-slate-400">No discount codes yet.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </div>

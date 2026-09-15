@@ -13,6 +13,7 @@ import bcrypt
 import jwt
 from bson import ObjectId
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
+from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -20,6 +21,8 @@ from pydantic import BaseModel, Field, EmailStr
 
 from astro import compute_chart, recommend_gemstone, RASHIS, GEMSTONES, NAKSHATRAS
 from geo import geocode
+from pdf_gen import generate_kundali_pdf
+from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("rashisense")
@@ -31,6 +34,8 @@ db = client[os.environ['DB_NAME']]
 JWT_SECRET = os.environ['JWT_SECRET']
 JWT_ALGORITHM = "HS256"
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY')
+STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', 'sk_test_emergent')
+PDF_PRICE_INR = float(os.environ.get('PDF_PRICE_INR', '199'))
 
 app = FastAPI(title="Rashisense API")
 api_router = APIRouter(prefix="/api")
@@ -351,6 +356,140 @@ async def horoscope(rashi_key: str, period: str = "daily"):
     return {"rashi": rashi, "period": period, "date_key": date_key, "forecast": forecast}
 
 
+# ---------- Discount codes + Paid PDF ----------
+class DiscountInput(BaseModel):
+    code: str
+    percent: int  # 0-100
+
+
+class DiscountCodeIn(BaseModel):
+    code: str
+
+
+class PdfCheckoutInput(BaseModel):
+    reading_id: str
+    origin_url: str
+    discount_code: Optional[str] = ""
+
+
+async def _find_active_discount(code: str):
+    if not code:
+        return None
+    doc = await db.discount_codes.find_one({"code": code.strip().upper(), "active": True})
+    return doc
+
+
+@api_router.post("/pdf/validate-discount")
+async def validate_discount(inp: DiscountCodeIn):
+    doc = await _find_active_discount(inp.code)
+    if not doc:
+        return {"valid": False, "percent": 0}
+    return {"valid": True, "code": doc["code"], "percent": doc["percent"]}
+
+
+@api_router.post("/pdf/checkout")
+async def pdf_checkout(inp: PdfCheckoutInput, request: Request, user: dict = Depends(get_current_user)):
+    reading = await db.readings.find_one({"_id": ObjectId(inp.reading_id), "user_id": str(user["_id"])})
+    if not reading:
+        raise HTTPException(status_code=404, detail="Reading not found")
+    reading["_id"] = str(reading["_id"])
+
+    percent = 0
+    disc = await _find_active_discount(inp.discount_code)
+    if disc:
+        percent = disc["percent"]
+    amount = round(PDF_PRICE_INR * (1 - percent / 100.0), 2)
+
+    # Free (100% off) -> unlock without Stripe
+    if amount <= 0:
+        session_id = f"free_{secrets.token_hex(10)}"
+        await db.payment_transactions.insert_one({
+            "session_id": session_id, "user_id": str(user["_id"]), "reading_id": inp.reading_id,
+            "reading_snapshot": reading, "amount": 0.0, "currency": "inr",
+            "discount_code": (disc or {}).get("code"), "discount_percent": percent,
+            "status": "completed", "payment_status": "paid",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        return {"free": True, "session_id": session_id, "amount": 0.0, "discount_percent": percent}
+
+    host_url = str(request.base_url)
+    webhook_url = f"{host_url}api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+    success_url = f"{inp.origin_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{inp.origin_url}/payment/cancel"
+    req = CheckoutSessionRequest(
+        amount=amount, currency="inr", success_url=success_url, cancel_url=cancel_url,
+        metadata={"user_id": str(user["_id"]), "reading_id": inp.reading_id, "product": "kundali_pdf"},
+    )
+    session = await stripe_checkout.create_checkout_session(req)
+    await db.payment_transactions.insert_one({
+        "session_id": session.session_id, "user_id": str(user["_id"]), "reading_id": inp.reading_id,
+        "reading_snapshot": reading, "amount": amount, "currency": "inr",
+        "discount_code": (disc or {}).get("code"), "discount_percent": percent,
+        "status": "initiated", "payment_status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"free": False, "checkout_url": session.url, "session_id": session.session_id,
+            "amount": amount, "discount_percent": percent}
+
+
+@api_router.get("/payments/status/{session_id}")
+async def payment_status(session_id: str, request: Request):
+    record = await db.payment_transactions.find_one({"session_id": session_id})
+    if not record:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    if record.get("payment_status") != "paid" and not session_id.startswith("free_"):
+        try:
+            host_url = str(request.base_url)
+            stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}api/webhook/stripe")
+            status = await stripe_checkout.get_checkout_status(session_id)
+            if status.payment_status == "paid" or status.status == "complete":
+                await db.payment_transactions.update_one(
+                    {"session_id": session_id, "payment_status": {"$ne": "paid"}},
+                    {"$set": {"status": "completed", "payment_status": "paid",
+                              "updated_at": datetime.now(timezone.utc).isoformat()}})
+                record = await db.payment_transactions.find_one({"session_id": session_id})
+        except Exception as e:
+            logger.warning(f"Stripe status check failed: {e}")
+    return {"session_id": record["session_id"], "status": record["status"],
+            "payment_status": record["payment_status"]}
+
+
+@api_router.get("/pdf/download/{session_id}")
+async def pdf_download(session_id: str):
+    record = await db.payment_transactions.find_one({"session_id": session_id})
+    if not record:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    if record.get("payment_status") != "paid":
+        raise HTTPException(status_code=402, detail="Payment not completed")
+    reading = record.get("reading_snapshot")
+    if not reading:
+        reading = await db.readings.find_one({"_id": ObjectId(record["reading_id"])})
+    pdf_bytes = generate_kundali_pdf(reading)
+    name = (reading.get("input", {}).get("name") or "kundali").replace(" ", "_")
+    return StreamingResponse(iter([pdf_bytes]), media_type="application/pdf",
+                             headers={"Content-Disposition": f'attachment; filename="Rashisense_{name}.pdf"'})
+
+
+@api_router.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    body = await request.body()
+    sig = request.headers.get("Stripe-Signature", "")
+    try:
+        host_url = str(request.base_url)
+        stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=f"{host_url}api/webhook/stripe")
+        resp = await stripe_checkout.handle_webhook(body, sig)
+        if resp.session_id and resp.payment_status == "paid":
+            await db.payment_transactions.update_one(
+                {"session_id": resp.session_id, "payment_status": {"$ne": "paid"}},
+                {"$set": {"status": "completed", "payment_status": "paid",
+                          "updated_at": datetime.now(timezone.utc).isoformat()}})
+    except Exception as e:
+        logger.warning(f"Webhook error: {e}")
+        raise HTTPException(status_code=400, detail="Webhook error")
+    return {"status": "ok"}
+
+
 # ---------- Admin ----------
 @api_router.get("/admin/stats")
 async def admin_stats(admin: dict = Depends(get_admin_user)):
@@ -381,6 +520,46 @@ async def admin_delete_user(user_id: str, admin: dict = Depends(get_admin_user))
         raise HTTPException(status_code=400, detail="Cannot delete an admin account")
     await db.users.delete_one({"_id": ObjectId(user_id)})
     await db.readings.delete_many({"user_id": user_id})
+    return {"ok": True}
+
+
+@api_router.get("/admin/discounts")
+async def admin_list_discounts(admin: dict = Depends(get_admin_user)):
+    docs = await db.discount_codes.find({}).sort("created_at", -1).to_list(200)
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+    return docs
+
+
+@api_router.post("/admin/discounts")
+async def admin_create_discount(inp: DiscountInput, admin: dict = Depends(get_admin_user)):
+    code = inp.code.strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="Code required")
+    percent = max(0, min(100, inp.percent))
+    if await db.discount_codes.find_one({"code": code}):
+        raise HTTPException(status_code=400, detail="Code already exists")
+    doc = {"code": code, "percent": percent, "active": True,
+           "created_at": datetime.now(timezone.utc).isoformat()}
+    res = await db.discount_codes.insert_one(doc)
+    doc["id"] = str(res.inserted_id)
+    doc.pop("_id", None)
+    return doc
+
+
+@api_router.patch("/admin/discounts/{discount_id}")
+async def admin_toggle_discount(discount_id: str, admin: dict = Depends(get_admin_user)):
+    doc = await db.discount_codes.find_one({"_id": ObjectId(discount_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Not found")
+    new_active = not doc.get("active", True)
+    await db.discount_codes.update_one({"_id": ObjectId(discount_id)}, {"$set": {"active": new_active}})
+    return {"id": discount_id, "active": new_active}
+
+
+@api_router.delete("/admin/discounts/{discount_id}")
+async def admin_delete_discount(discount_id: str, admin: dict = Depends(get_admin_user)):
+    await db.discount_codes.delete_one({"_id": ObjectId(discount_id)})
     return {"ok": True}
 
 

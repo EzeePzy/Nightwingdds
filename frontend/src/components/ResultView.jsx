@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Sun, Moon, ArrowUpRight, Star, Sparkles, Gem, Globe, Info, Hourglass, Briefcase, Heart, Activity, Coins, Flower2, Palette, Hash } from "lucide-react";
+import { Sun, Moon, ArrowUpRight, Star, Sparkles, Gem, Globe, Info, Hourglass, ChevronDown, ChevronUp, Download, FileText, Tag, Briefcase, Heart, Activity, Coins, Flower2, Palette, Hash } from "lucide-react";
+import { toast } from "sonner";
 import KundaliChart from "./KundaliChart";
+import api, { API, formatApiError } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
 
 const GEM_IMG = {
   Ruby: "https://images.unsplash.com/photo-1653405507161-da7d205d86f4?crop=entropy&cs=srgb&fm=jpg&q=85&w=400",
@@ -28,11 +31,59 @@ function Stat({ icon: Icon, label, value, testid }) {
   );
 }
 
-export default function ResultView({ result }) {
+export default function ResultView({ result, readingId }) {
   const { chart, gemstone, reading } = result;
+  const { user } = useAuth();
   const [tab, setTab] = useState("career");
+  const [chartMode, setChartMode] = useState("d1");
+  const [openDasha, setOpenDasha] = useState(() => (chart.dasha || []).findIndex((d) => d.is_current));
   const activeTab = TABS.find((t) => t.key === tab);
   const gemImg = GEM_IMG[gemstone.name] || DEFAULT_GEM_IMG;
+
+  const rid = readingId || result.id;
+  const [discount, setDiscount] = useState("");
+  const [discountInfo, setDiscountInfo] = useState(null);
+  const [payBusy, setPayBusy] = useState(false);
+  const PRICE = 199;
+  const finalPrice = discountInfo?.valid ? Math.round(PRICE * (1 - discountInfo.percent / 100)) : PRICE;
+
+  const applyDiscount = async () => {
+    if (!discount.trim()) return;
+    try {
+      const { data } = await api.post("/pdf/validate-discount", { code: discount.trim() });
+      setDiscountInfo(data);
+      toast[data.valid ? "success" : "error"](data.valid ? `${data.percent}% discount applied!` : "Invalid or inactive code");
+    } catch (e) {
+      toast.error("Could not validate code");
+    }
+  };
+
+  const buyPdf = async () => {
+    if (!user || !rid) {
+      toast.error("Please log in and save this reading to download the PDF.");
+      return;
+    }
+    setPayBusy(true);
+    try {
+      const { data } = await api.post("/pdf/checkout", {
+        reading_id: rid, origin_url: window.location.origin, discount_code: discountInfo?.valid ? discount.trim() : "",
+      });
+      if (data.free) {
+        window.location.href = `${API}/pdf/download/${data.session_id}`;
+        toast.success("Unlocked! Your PDF is downloading.");
+      } else {
+        window.location.href = data.checkout_url;
+      }
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || "Checkout failed");
+    } finally {
+      setPayBusy(false);
+    }
+  };
+
+  const displayChart = chartMode === "d9"
+    ? { ascendant: chart.navamsa_ascendant, planet_positions: chart.navamsa_positions }
+    : chart;
 
   return (
     <div className="space-y-8">
@@ -67,14 +118,23 @@ export default function ResultView({ result }) {
           </div>
           <p className="mb-1 text-sm text-slate-400">North Indian chart · {chart.moon_sign.en} Moon · {chart.moon_sign.element} element</p>
           {chart.birth_location && (
-            <p className="mb-5 text-xs text-slate-500">📍 {chart.birth_location.matched} · {chart.birth_location.tz}{typeof chart.ayanamsa === "number" ? ` · Ayanamsa ${chart.ayanamsa}°` : ""}</p>
+            <p className="mb-4 text-xs text-slate-500">📍 {chart.birth_location.matched} · {chart.birth_location.tz}{typeof chart.ayanamsa === "number" ? ` · Ayanamsa ${chart.ayanamsa}°` : ""}</p>
           )}
-          <KundaliChart chart={chart} />
-          <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs">
+          {chart.navamsa_positions && (
+            <div className="mb-4 flex gap-2">
+              <button onClick={() => setChartMode("d1")} data-testid="chart-toggle-d1" className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${chartMode === "d1" ? "rs-gold-btn" : "border border-amber-500/25 text-slate-300 hover:text-amber-200"}`}>Rashi (D1)</button>
+              <button onClick={() => setChartMode("d9")} data-testid="chart-toggle-d9" className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${chartMode === "d9" ? "rs-gold-btn" : "border border-amber-500/25 text-slate-300 hover:text-amber-200"}`}>Navamsa (D9)</button>
+            </div>
+          )}
+          <div data-testid={chartMode === "d9" ? "navamsa-chart" : "rashi-chart"}>
+            <KundaliChart chart={displayChart} />
+          </div>
+          <p className="mt-2 text-center text-xs text-slate-500">{chartMode === "d9" ? "Navamsa (D9) — depth of destiny, marriage & dharma" : "Rashi chart (D1) — the main birth chart"}</p>
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
             {Object.entries(chart.planet_positions).map(([p, s]) => (
               <div key={p} className="rounded-lg border border-amber-500/15 bg-white/5 px-2 py-1.5">
                 <span className="text-amber-300">{p}</span>
-                <span className="block text-slate-400">{s}{typeof chart.planet_degrees?.[p] === "number" ? ` ${chart.planet_degrees[p]}°` : ""}</span>
+                <span className="block text-slate-400">{chartMode === "d9" ? chart.navamsa_positions?.[p] : s}{chartMode === "d1" && typeof chart.planet_degrees?.[p] === "number" ? ` ${chart.planet_degrees[p]}°` : ""}</span>
               </div>
             ))}
           </div>
@@ -122,23 +182,65 @@ export default function ResultView({ result }) {
               </span>
             )}
           </div>
-          <p className="mb-5 text-sm text-slate-400">Planetary periods calculated from your Moon's nakshatra ({chart.nakshatra}) — the 120-year cycle that times life's chapters.</p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <p className="mb-5 text-sm text-slate-400">Planetary periods calculated from your Moon's nakshatra ({chart.nakshatra}) — the 120-year cycle that times life's chapters. Tap a period to see its Antardasha (sub-periods).</p>
+          <div className="space-y-2">
             {chart.dasha.map((d, i) => (
-              <div key={i} className={`flex items-center justify-between rounded-lg border px-3 py-2.5 ${d.is_current ? "border-amber-400/60 bg-amber-500/10" : "border-amber-500/15 bg-white/5"}`}>
-                <div className="flex items-center gap-2">
-                  <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${d.is_current ? "bg-amber-500/30 text-amber-100" : "bg-white/10 text-amber-300"}`}>{d.planet[0]}</span>
-                  <div>
-                    <div className="text-sm text-slate-100">{d.planet}</div>
-                    <div className="text-[11px] text-slate-400">{d.years} yrs</div>
+              <div key={i} className={`rounded-xl border ${d.is_current ? "border-amber-400/60 bg-amber-500/10" : "border-amber-500/15 bg-white/5"}`}>
+                <button onClick={() => setOpenDasha(openDasha === i ? -1 : i)} data-testid={`dasha-maha-${d.planet.toLowerCase()}`} className="flex w-full items-center justify-between px-4 py-3 text-left">
+                  <div className="flex items-center gap-3">
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold ${d.is_current ? "bg-amber-500/30 text-amber-100" : "bg-white/10 text-amber-300"}`}>{d.planet[0]}</span>
+                    <div>
+                      <div className="text-sm text-slate-100">{d.planet} Mahadasha {d.is_current && <span className="ml-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-200">running</span>}</div>
+                      <div className="text-[11px] text-slate-400">{d.start} → {d.end} · {d.years} yrs</div>
+                    </div>
                   </div>
-                </div>
-                <div className="text-right text-[11px] text-slate-400">{d.start}<br />{d.end}</div>
+                  {d.antardashas && d.antardashas.length > 0 && (openDasha === i ? <ChevronUp className="h-4 w-4 text-amber-300" /> : <ChevronDown className="h-4 w-4 text-slate-400" />)}
+                </button>
+                {openDasha === i && d.antardashas && (
+                  <div className="grid grid-cols-2 gap-2 border-t border-amber-500/15 p-3 sm:grid-cols-3 lg:grid-cols-4">
+                    {d.antardashas.map((a, j) => (
+                      <div key={j} data-testid={a.is_current ? "antardasha-current" : undefined} className={`rounded-lg border px-2.5 py-2 text-xs ${a.is_current ? "border-amber-400/60 bg-amber-500/15" : "border-amber-500/10 bg-[#090A15]/50"}`}>
+                        <div className="text-slate-100">{d.planet[0]}–{a.planet}{a.is_current && " ●"}</div>
+                        <div className="text-[10px] text-slate-400">{a.start} → {a.end}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {/* Paid PDF report */}
+      <div data-testid="pdf-purchase-card" className="rs-card overflow-hidden p-6 sm:p-8">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/15"><FileText className="h-6 w-6 text-amber-300" /></span>
+            <div>
+              <h3 className="font-serif text-2xl text-amber-100">Download Full Kundali PDF</h3>
+              <p className="mt-1 max-w-md text-sm text-slate-400">A professional report with your Rashi &amp; Navamsa charts, all planetary positions, the complete Vimshottari Dasha, gemstone remedy and personalised reading.</p>
+            </div>
+          </div>
+          <div className="shrink-0 text-center md:text-right">
+            <div className="font-serif text-3xl rs-gold-text">
+              ₹{finalPrice}
+              {discountInfo?.valid && <span className="ml-2 align-middle text-base text-slate-500 line-through">₹{PRICE}</span>}
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <div className="relative">
+                <Tag className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-amber-400/70" />
+                <input data-testid="discount-code-input" value={discount} onChange={(e) => { setDiscount(e.target.value); setDiscountInfo(null); }} placeholder="Discount code" className="w-36 rounded-lg border border-amber-500/20 bg-[#090A15]/60 py-2 pl-8 pr-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400/60" />
+              </div>
+              <button onClick={applyDiscount} data-testid="apply-discount-button" className="rounded-lg border border-amber-500/30 px-3 py-2 text-sm text-amber-200 hover:border-amber-400/60">Apply</button>
+            </div>
+            <button onClick={buyPdf} disabled={payBusy} data-testid="buy-pdf-button" className="rs-gold-btn mt-3 flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm disabled:opacity-60 md:w-auto">
+              {payBusy ? "Please wait…" : <><Download className="h-4 w-4" /> {finalPrice === 0 ? "Get PDF Free" : `Pay ₹${finalPrice} & Download`}</>}
+            </button>
+            {(!user || !rid) && <p className="mt-2 text-xs text-slate-500">Log in &amp; save this reading to buy the PDF.</p>}
+          </div>
+        </div>
+      </div>
 
       {/* Gemstone recommendation */}
       <div data-testid="gemstone-recommendation-card" className="rs-card overflow-hidden p-0">

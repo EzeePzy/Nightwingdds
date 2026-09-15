@@ -53,6 +53,10 @@ _PLANET_CODES = {
 }
 
 
+def _navamsa_index(longitude: float) -> int:
+    return int(longitude // (10.0 / 3.0)) % 12
+
+
 def _rashi_of(longitude: float):
     return RASHIS[int(longitude % 360 // 30)]
 
@@ -103,6 +107,10 @@ def compute_chart(birth_dt: datetime, lat: float, lon: float, tz_name: str = "As
     planet_positions = {p: _rashi_of(lng)["sa"] for p, lng in positions.items()}
     planet_degrees = {p: round(lng % 30.0, 2) for p, lng in positions.items()}
 
+    # Navamsa (D9) divisional chart
+    navamsa_positions = {p: RASHIS[_navamsa_index(lng)]["sa"] for p, lng in positions.items()}
+    navamsa_ascendant = RASHIS[_navamsa_index(asc_long)]
+
     dasha = compute_vimshottari(birth_dt, nak_index, within, nak_span)
 
     return {
@@ -116,6 +124,8 @@ def compute_chart(birth_dt: datetime, lat: float, lon: float, tz_name: str = "As
         "ruling_planet_sa": moon_rashi["planet_sa"],
         "planet_positions": planet_positions,
         "planet_degrees": planet_degrees,
+        "navamsa_positions": navamsa_positions,
+        "navamsa_ascendant": navamsa_ascendant,
         "ayanamsa": round(ayanamsa, 4),
         "accuracy": "swiss_ephemeris_lahiri",
         "dasha": dasha["periods"],
@@ -132,31 +142,60 @@ _DAYS_PER_YEAR = 365.2425
 
 
 def compute_vimshottari(birth_dt: datetime, nak_index: int, within: float, nak_span: float):
-    """Vimshottari Mahadasha timeline anchored to the Moon's nakshatra at birth."""
+    """Vimshottari Mahadasha + Antardasha (bhukti) timeline from the Moon's nakshatra."""
     from datetime import timedelta
 
+    def add_years(d, yrs):
+        return d + timedelta(days=yrs * _DAYS_PER_YEAR)
+
     start_idx = nak_index % 9
-    remaining_fraction = (nak_span - within) / nak_span
+    elapsed_fraction = within / nak_span
+    l1_years = _DASHA_SEQ[start_idx][1]
+    # Notional start of the running mahadasha (before birth)
+    notional_start = add_years(birth_dt, -l1_years * elapsed_fraction)
+    today = datetime.now()
 
     periods = []
-    cursor = birth_dt
-    today = datetime.now()
     current = None
-    for i in range(10):  # one full 120-yr cycle + balance
+    cursor = notional_start
+    for i in range(9):  # one full 120-year cycle
         lord, years = _DASHA_SEQ[(start_idx + i) % 9]
-        span_years = years * remaining_fraction if i == 0 else float(years)
-        end = cursor + timedelta(days=span_years * _DAYS_PER_YEAR)
+        maha_start, maha_end = cursor, add_years(cursor, years)
+        cursor = maha_end
+        if maha_end <= birth_dt:
+            continue
+        # Antardashas (bhukti) — sub-periods, starting from the mahadasha lord
+        antars = []
+        sub_cursor = maha_start
+        for j in range(9):
+            sub_lord, sub_years = _DASHA_SEQ[(start_idx + i + j) % 9]
+            sub_dur = years * sub_years / 120.0
+            sub_start, sub_end = sub_cursor, add_years(sub_cursor, sub_dur)
+            sub_cursor = sub_end
+            if sub_end <= birth_dt:
+                continue
+            disp_start = max(sub_start, birth_dt)
+            is_cur = sub_start <= today < sub_end
+            antars.append({
+                "planet": sub_lord,
+                "start": disp_start.strftime("%Y-%m-%d"),
+                "end": sub_end.strftime("%Y-%m-%d"),
+                "is_current": is_cur,
+            })
+        is_current = maha_start <= today < maha_end
         entry = {
             "planet": lord,
-            "start": cursor.strftime("%Y-%m-%d"),
-            "end": end.strftime("%Y-%m-%d"),
-            "years": round(span_years, 2),
+            "start": max(maha_start, birth_dt).strftime("%Y-%m-%d"),
+            "end": maha_end.strftime("%Y-%m-%d"),
+            "years": round(years, 2),
+            "antardashas": antars,
+            "is_current": is_current,
         }
-        if cursor <= today < end:
-            entry["is_current"] = True
-            current = entry
+        if is_current:
+            current = {"planet": lord, "start": entry["start"], "end": entry["end"],
+                       "years": entry["years"],
+                       "antardasha": next((a for a in antars if a["is_current"]), None)}
         periods.append(entry)
-        cursor = end
     return {"periods": periods, "current": current}
 
 
