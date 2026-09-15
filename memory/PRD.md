@@ -32,5 +32,6 @@ Astrology website "Rashisense" where users know their horoscope and true Vedic R
 - Vimshottari Dasha timeline computed from Moon nakshatra (matches professional chart's Mercury balance 9.16y); planetary degrees shown in Kundali.
 
 ## Backlog (P1/P2)
-- P2: Antardasha (sub-periods) & Navamsa (D9) chart; PDF export of the full kundali.
+- P1: Email the PDF after purchase (NOT yet built — needs an email provider key e.g. Resend/SendGrid).
+- P2: Navamsa full nested divisional set (D3/D10), one-time-use signed PDF download tokens.
 - P2: Gemstone catalog editing from admin (currently read-only), password reset flow.

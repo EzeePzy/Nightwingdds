@@ -1,0 +1,35 @@
+{
+  "summary": "Verified new features end-to-end: Antardasha sub-periods, Navamsa D9 chart, admin discount CRUD/toggle, discount validation, paid PDF checkout (Stripe + free path), authorization on checkout, and PDF download gating. Added /app/backend/tests/test_paid_pdf.py with 11 tests — ALL PASSING. Frontend Playwright E2E fully green: chart-toggle-d1/d9 swap Rashi<->Navamsa, all 9 dasha-maha-<planet> expanders render antardasha grids, pdf-purchase-card shows ₹199, admin panel creates+toggles code (Active->Off), 100%-off code applied on PDF card shows ₹0 and clicking Get PDF Free triggered a real PDF download (Rashisense_Koushik.pdf) with a success toast 'Unlocked! Your PDF is downloading'. Full backend regression: 57/59 pass. The 2 failures are stale test_dasha.py assertions from iteration_4 that no longer match the new dasha schema (see rca).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/rashi/calculate (dasha field)", "issue": "Regression vs iteration_4 test_dasha.py: 'years' in periods is now the full mahadasha length (e.g. Mercury 17) instead of the remaining balance dasha (was 9.16). Also chart.current_dasha object no longer includes an is_current flag (only planet/start/end/years/antardasha). Both are schema-consistent with the new antardasha implementation but break the previous regression."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_paid_pdf.py",
+    "/app/test_reports/pytest/paid_pdf.xml",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Update /app/backend/tests/test_dasha.py to match the new dasha schema: expect 'years' to be full mahadasha years (17.0) and remove the is_current assertion on chart.current_dasha (that key was removed from the current-dasha payload). Or, if the old behavior is desired, restore balance-dasha 'years' on the first period and add is_current back to current_dasha."
+  ],
+  "critical_code_review_comments": [
+    "server.py /api/pdf/download is intentionally unauthenticated but gated only by session payment_status==paid; a leaked session_id becomes a direct-download token. Consider signing the session_id or requiring a short-lived one-time nonce.",
+    "In compute_vimshottari, first mahadasha now shows the FULL 'years' (e.g. 17) with display start clamped to birth date via max(maha_start, birth_dt) — end-date is 2011-03-11 but years=17 is misleading in the UI (Mercury Mahadasha row would read 2002-01-10 -> 2011-03-11 · 17 yrs). Consider recomputing displayed 'years' as (end-start)/365.25 or exposing both notional_years and remaining_years.",
+    "/api/pdf/checkout stores the entire reading_snapshot (chart+reading text) in payment_transactions — large document duplication. Consider referencing reading_id and looking up on download (already handled as fallback)."
+  ],
+  "updated_files": ["/app/backend/tests/test_paid_pdf.py"],
+  "success_rate": {"backend": "100% new-feature tests (11/11); 96.6% overall (57/59) with 2 stale regressions", "frontend": "100%"},
+  "test_credentials": "Admin: admin / Rashi@2026. Test users registered per-run with TEST_pdfuser_<uuid>@example.com.",
+  "seed_data_creation": "Discount codes TEST50 (50%, created+toggled+deleted) and TESTFREE (100%, created for free-path test) are cleaned up between runs by the test fixture.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "test_paid_pdf.py covers all new-feature backend contracts. Frontend E2E confirmed via Playwright. If retesting, note pytest.ini uses -n xdist which requires unique register emails (uuid). Free-path download verifies content-type application/pdf and %PDF magic bytes; the Stripe path is validated only up to a valid checkout_url + pending status + 402 on unpaid download (external Stripe card page NOT completed).",
+  "rca of the issue": "test_dasha.py from iteration_4 was written when compute_vimshottari returned 'years' = balance-dasha (remaining years of the running-at-birth mahadasha) and included is_current on the current_dasha shortcut object. The new implementation (this iteration) reworks compute_vimshottari to also emit antardashas; in the process it changed both the 'years' semantics (now full mahadasha length) and dropped the is_current key from the current_dasha object. Fix: update the old assertions OR restore backward-compatible fields. No functional impact on end-users or new features."
+}

@@ -183,17 +183,19 @@ def compute_vimshottari(birth_dt: datetime, nak_index: int, within: float, nak_s
                 "is_current": is_cur,
             })
         is_current = maha_start <= today < maha_end
+        disp_start = max(maha_start, birth_dt)
+        disp_years = round((maha_end - disp_start).days / _DAYS_PER_YEAR, 2)
         entry = {
             "planet": lord,
-            "start": max(maha_start, birth_dt).strftime("%Y-%m-%d"),
+            "start": disp_start.strftime("%Y-%m-%d"),
             "end": maha_end.strftime("%Y-%m-%d"),
-            "years": round(years, 2),
+            "years": disp_years,
             "antardashas": antars,
             "is_current": is_current,
         }
         if is_current:
             current = {"planet": lord, "start": entry["start"], "end": entry["end"],
-                       "years": entry["years"],
+                       "years": entry["years"], "is_current": True,
                        "antardasha": next((a for a in antars if a["is_current"]), None)}
         periods.append(entry)
     return {"periods": periods, "current": current}
