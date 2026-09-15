@@ -100,6 +100,24 @@ body {
 
 ::selection { background: rgba(226,158,56,0.35); color: #fff; }
 
+/* Day (light) mode: bright sky background applied globally */
+html.rs-light body { background-color: #EAF3FB; color: #1e293b; }
+html.rs-light .rs-cosmic {
+  background:
+    radial-gradient(900px 500px at 80% -5%, rgba(255,214,102,0.55), transparent 60%),
+    radial-gradient(700px 400px at 15% 0%, rgba(135,206,250,0.45), transparent 55%),
+    linear-gradient(180deg, #BFE3FF 0%, #E9F5FF 45%, #FFF6E6 100%);
+}
+html { scroll-behavior: smooth; }
+button, a { -webkit-tap-highlight-color: transparent; }
+.rs-tap { transition: transform .12s ease; }
+.rs-tap:active { transform: scale(0.96); }
+
+/* Sun for day mode */
+@keyframes sun-glow { 0%,100%{ box-shadow:0 0 60px 20px rgba(255,196,84,0.55);} 50%{ box-shadow:0 0 90px 34px rgba(255,196,84,0.7);} }
+.rs-sun { background: radial-gradient(circle at 35% 35%, #FFF2C2, #FFC44F 60%, #FF9E2C); animation: sun-glow 5s ease-in-out infinite; }
+
+
 /* Star twinkle */
 @keyframes twinkle { 0%,100%{opacity:.15} 50%{opacity:.9} }
 .rs-star { position: absolute; border-radius: 9999px; background: #fff; animation: twinkle 4s ease-in-out infinite; }

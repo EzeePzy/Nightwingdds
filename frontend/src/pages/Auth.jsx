@@ -24,7 +24,7 @@ export default function Auth() {
       const user = mode === "signup"
         ? await register(form.name, form.email, form.password)
         : await login(form.email, form.password);
-      toast.success(mode === "signup" ? "Welcome to Rashisense!" : "Welcome back!");
+      toast.success(mode === "signup" ? "Welcome to Rashify!" : "Welcome back!");
       nav(user.role === "admin" ? "/admin" : "/dashboard");
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || err.message);
@@ -40,7 +40,7 @@ export default function Auth() {
         <div className="mb-6 text-center">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/15"><Moon className="h-6 w-6 text-amber-300" /></span>
           <h1 className="mt-4 font-serif text-3xl text-amber-100">{mode === "signup" ? "Create your account" : "Welcome back"}</h1>
-          <p className="mt-1 text-sm text-slate-400">{mode === "signup" ? "Begin your cosmic journey with Rashisense" : "Sign in to view your readings"}</p>
+          <p className="mt-1 text-sm text-slate-400">{mode === "signup" ? "Begin your cosmic journey with Rashify" : "Sign in to view your readings"}</p>
         </div>
 
         <form onSubmit={submit} className="space-y-4">
@@ -56,7 +56,7 @@ export default function Auth() {
 
         <div className="rs-divider my-6" />
         <p className="text-center text-sm text-slate-400">
-          {mode === "signup" ? "Already have an account? " : "New to Rashisense? "}
+          {mode === "signup" ? "Already have an account? " : "New to Rashify? "}
           <button onClick={() => setMode(mode === "signup" ? "login" : "signup")} data-testid="auth-toggle-mode" className="font-medium text-amber-300 hover:underline">
             {mode === "signup" ? "Sign in" : "Create one"}
           </button>

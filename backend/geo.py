@@ -19,6 +19,29 @@ _DEFAULT = {"lat": 23.1765, "lon": 75.7885, "tz": "Asia/Kolkata",
             "matched": "Ujjain, India", "confidence": "low"}
 
 
+def search_cities(q: str, limit: int = 8):
+    q = (q or "").strip().lower()
+    if len(q) < 2:
+        return []
+    scored = []
+    for c in _CITIES.values():
+        name = c["name"]
+        nl = name.lower()
+        if nl.startswith(q):
+            country = _COUNTRIES.get(c.get("countrycode", ""), {}).get("name", c.get("countrycode", ""))
+            scored.append((c.get("population", 0) or 0, f"{name}, {country}"))
+    scored.sort(reverse=True)
+    out, seen = [], set()
+    for _, label in scored:
+        if label in seen:
+            continue
+        seen.add(label)
+        out.append(label)
+        if len(out) >= limit:
+            break
+    return out
+
+
 @lru_cache(maxsize=512)
 def geocode(place: str):
     if not place or not place.strip():

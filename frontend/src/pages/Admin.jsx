@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Users, Sparkles, Activity, Trash2, Shield, Gem, ScrollText, Ticket, Plus, Power } from "lucide-react";
+import { Users, Sparkles, Activity, Trash2, Shield, Gem, ScrollText, Ticket, Plus, Power, Settings, Save } from "lucide-react";
 import api, { formatApiError } from "../lib/api";
 import StarField from "../components/StarField";
 
@@ -10,6 +10,7 @@ export default function Admin() {
   const [logs, setLogs] = useState([]);
   const [gems, setGems] = useState([]);
   const [discounts, setDiscounts] = useState([]);
+  const [settings, setSettings] = useState(null);
   const [newCode, setNewCode] = useState("");
   const [newPct, setNewPct] = useState(10);
   const [tab, setTab] = useState("users");
@@ -21,9 +22,20 @@ export default function Admin() {
       api.get("/admin/logs").then((r) => setLogs(r.data)),
       api.get("/gemstones").then((r) => setGems(r.data)),
       api.get("/admin/discounts").then((r) => setDiscounts(r.data)),
+      api.get("/settings").then((r) => setSettings(r.data)),
     ]).catch((err) => toast.error(formatApiError(err.response?.data?.detail)));
   };
   useEffect(load, []);
+
+  const saveSettings = async () => {
+    try {
+      const { data } = await api.put("/admin/settings", settings);
+      setSettings(data);
+      toast.success("Site settings saved");
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
 
   const delUser = async (id) => {
     try {
@@ -71,6 +83,7 @@ export default function Admin() {
     { key: "logs", label: "Calculation Logs", icon: ScrollText },
     { key: "gems", label: "Gemstone Catalog", icon: Gem },
     { key: "discounts", label: "Discount Codes", icon: Ticket },
+    { key: "settings", label: "Site Settings", icon: Settings },
   ];
 
   return (
@@ -81,7 +94,7 @@ export default function Admin() {
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/15"><Shield className="h-6 w-6 text-amber-300" /></span>
           <div>
             <h1 className="font-serif text-4xl text-amber-100">Admin Control Hub</h1>
-            <p className="text-sm text-slate-400">Manage the Rashisense platform</p>
+            <p className="text-sm text-slate-400">Manage the Rashify platform</p>
           </div>
         </div>
 
@@ -223,6 +236,31 @@ export default function Admin() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "settings" && settings && (
+          <div data-testid="admin-settings-panel" className="rs-card max-w-2xl p-6">
+            <h3 className="mb-4 font-serif text-xl text-amber-100">Edit website content</h3>
+            <div className="space-y-4">
+              {[
+                ["brand_name", "Brand Name"],
+                ["hero_title_gold", "Hero Title (gold line)"],
+                ["hero_title_plain", "Hero Title (plain line)"],
+                ["hero_subtitle", "Hero Subtitle"],
+                ["pdf_price_inr", "PDF Price (₹)"],
+              ].map(([key, label]) => (
+                <div key={key}>
+                  <label className="mb-1 block text-xs uppercase tracking-wider text-amber-400/80">{label}</label>
+                  {key === "hero_subtitle" ? (
+                    <textarea data-testid={`settings-${key}`} value={settings[key] || ""} onChange={(e) => setSettings({ ...settings, [key]: e.target.value })} rows={3} className="w-full resize-none rounded-xl border border-amber-500/20 bg-[#090A15]/60 px-4 py-3 text-sm text-slate-100 outline-none focus:border-amber-400/60" />
+                  ) : (
+                    <input data-testid={`settings-${key}`} value={settings[key] || ""} onChange={(e) => setSettings({ ...settings, [key]: key === "pdf_price_inr" ? Number(e.target.value) : e.target.value })} type={key === "pdf_price_inr" ? "number" : "text"} className="w-full rounded-xl border border-amber-500/20 bg-[#090A15]/60 px-4 py-3 text-sm text-slate-100 outline-none focus:border-amber-400/60" />
+                  )}
+                </div>
+              ))}
+              <button onClick={saveSettings} data-testid="settings-save-button" className="rs-gold-btn flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm"><Save className="h-4 w-4" /> Save Settings</button>
             </div>
           </div>
         )}

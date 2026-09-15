@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Briefcase, Heart, Activity, Coins, Palette, Hash, Sparkles } from "lucide-react";
 import api from "../lib/api";
 import { RASHIS } from "../data/rashis";
+import { useI18n } from "../i18n";
 import StarField from "../components/StarField";
 
 const PERIODS = [
@@ -18,6 +19,7 @@ const PILLARS = [
 ];
 
 export default function Horoscope() {
+  const { lang } = useI18n();
   const [rashi, setRashi] = useState(RASHIS[0]);
   const [period, setPeriod] = useState("daily");
   const [data, setData] = useState(null);
@@ -26,10 +28,10 @@ export default function Horoscope() {
   useEffect(() => {
     setLoading(true);
     setData(null);
-    api.get(`/horoscope/${rashi.key}?period=${period}`)
+    api.get(`/horoscope/${rashi.key}?period=${period}&language=${lang}`)
       .then((r) => setData(r.data))
       .finally(() => setLoading(false));
-  }, [rashi, period]);
+  }, [rashi, period, lang]);
 
   return (
     <div className="relative min-h-screen rs-cosmic">

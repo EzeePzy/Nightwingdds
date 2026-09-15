@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import KundaliChart from "./KundaliChart";
 import api, { API, formatApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import { useI18n } from "../i18n";
 
 const GEM_IMG = {
   Ruby: "https://images.unsplash.com/photo-1653405507161-da7d205d86f4?crop=entropy&cs=srgb&fm=jpg&q=85&w=400",
@@ -34,6 +35,25 @@ function Stat({ icon: Icon, label, value, testid }) {
 export default function ResultView({ result, readingId }) {
   const { chart, gemstone, reading } = result;
   const { user } = useAuth();
+  const { t, lang } = useI18n();
+  const [insights, setInsights] = useState(null);
+  const [insBusy, setInsBusy] = useState(false);
+
+  const getInsights = async () => {
+    setInsBusy(true);
+    try {
+      const cd = chart.current_dasha || {};
+      const { data } = await api.post("/dasha/insights", {
+        rashi: chart.moon_sign.sa, mahadasha: cd.planet || chart.dasha?.[0]?.planet,
+        antardasha: cd.antardasha?.planet || "", language: lang,
+      });
+      setInsights(data);
+    } catch (e) {
+      toast.error("Could not load insights");
+    } finally {
+      setInsBusy(false);
+    }
+  };
   const [tab, setTab] = useState("career");
   const [chartMode, setChartMode] = useState("d1");
   const [openDasha, setOpenDasha] = useState(() => (chart.dasha || []).findIndex((d) => d.is_current));
@@ -209,6 +229,29 @@ export default function ResultView({ result, readingId }) {
               </div>
             ))}
           </div>
+
+          {chart.current_dasha && (
+            <div className="mt-5">
+              {!insights ? (
+                <button onClick={getInsights} disabled={insBusy} data-testid="dasha-insights-button" className="rs-tap flex items-center gap-2 rounded-full border border-amber-500/40 px-5 py-2.5 text-sm text-amber-200 hover:bg-amber-500/10 disabled:opacity-60">
+                  {insBusy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500/40 border-t-amber-300" /> Reading your period…</> : <><Sparkles className="h-4 w-4" /> {t("common.dasha_insights")}</>}
+                </button>
+              ) : (
+                <div data-testid="dasha-insights-panel" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 sm:col-span-2">
+                    <div className="mb-1 flex items-center gap-2 text-amber-300"><Sparkles className="h-4 w-4" /> <span className="font-medium">Current Period Insight</span></div>
+                    <p className="text-sm leading-relaxed text-slate-300">{insights.overview}</p>
+                  </div>
+                  {[["career", Briefcase, "Career"], ["love", Heart, "Love"], ["money", Coins, "Money"]].map(([k, Icon, label]) => (
+                    <div key={k} className="rounded-xl border border-amber-500/15 bg-[#090A15]/50 p-4">
+                      <div className="mb-1 flex items-center gap-2 text-amber-300"><Icon className="h-4 w-4" /> <span className="font-medium">{label}</span></div>
+                      <p className="text-sm leading-relaxed text-slate-300">{insights[k]}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

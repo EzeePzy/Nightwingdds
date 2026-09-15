@@ -5,13 +5,16 @@ import { toast } from "sonner";
 import { User, Calendar, Clock, MapPin, HelpCircle, Sparkles, Save, Users } from "lucide-react";
 import api, { formatApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import { useI18n } from "../i18n";
 import StarField from "../components/StarField";
+import CityAutocomplete from "../components/CityAutocomplete";
 import ResultView from "../components/ResultView";
 
 const empty = { name: "", gender: "Male", dob: "", time: "", place: "", problem: "" };
 
 export default function Calculator() {
   const { user, loading } = useAuth();
+  const { t, lang } = useI18n();
   const loc = useLocation();
   const [form, setForm] = useState(empty);
   const [result, setResult] = useState(null);
@@ -59,7 +62,7 @@ export default function Calculator() {
     setBusy(true);
     setResult(null);
     try {
-      const res = await api.post("/rashi/calculate", form);
+      const res = await api.post("/rashi/calculate", { ...form, language: lang });
       setResult(res.data);
       if (res.data.saved) toast.success("Reading saved to your dashboard!");
       setTimeout(() => document.getElementById("rs-result")?.scrollIntoView({ behavior: "smooth" }), 100);
@@ -76,7 +79,7 @@ export default function Calculator() {
       <div className="relative z-10 mx-auto max-w-6xl px-5 py-12">
         <div className="mb-10 text-center">
           <span className="text-xs uppercase tracking-[0.2em] text-amber-400/90">Birth Details</span>
-          <h1 className="mt-2 font-serif text-4xl text-amber-100 sm:text-5xl">Rashi Calculator</h1>
+          <h1 className="mt-2 font-serif text-4xl text-amber-100 sm:text-5xl">{t("calc.title")}</h1>
           <p className="mx-auto mt-3 max-w-xl text-slate-400">Provide your exact birth information for an accurate Vedic reading and gemstone remedy.</p>
         </div>
 
@@ -112,8 +115,8 @@ export default function Calculator() {
               <input data-testid="birth-form-time-input" type="time" value={form.time} onChange={upd("time")} className={inputCls} />
             </Field>
             <div className="sm:col-span-2">
-              <Field label="Exact Birth Place" icon={MapPin}>
-                <input data-testid="birth-form-location-input" value={form.place} onChange={upd("place")} placeholder="City, State, Country" className={inputCls} />
+              <Field label={t("calc.place")} icon={MapPin}>
+                <CityAutocomplete testid="birth-form-location-input" value={form.place} onChange={(v) => setForm({ ...form, place: v })} placeholder="Start typing a city (2+ letters)…" className={inputCls} />
               </Field>
             </div>
             <div className="sm:col-span-2">
@@ -128,7 +131,7 @@ export default function Calculator() {
           )}
 
           <button type="submit" disabled={busy} data-testid="birth-form-submit-button" className="rs-gold-btn mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-base disabled:opacity-60">
-            {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0B0D1B]/40 border-t-[#0B0D1B]" /> Consulting the stars…</> : <><Sparkles className="h-5 w-5" /> Reveal My Rashi & Gemstone</>}
+            {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0B0D1B]/40 border-t-[#0B0D1B]" /> Consulting the stars…</> : <><Sparkles className="h-5 w-5" /> {t("calc.submit")}</>}
           </button>
           {user && (
             <button type="button" onClick={saveProfile} data-testid="calc-save-profile-button" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 py-3 text-sm text-amber-200 hover:border-amber-400/60 transition-colors">

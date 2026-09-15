@@ -20,7 +20,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 
 from astro import compute_chart, recommend_gemstone, RASHIS, GEMSTONES, NAKSHATRAS
-from geo import geocode
+from geo import geocode, search_cities
+from matchmaking import compute_guna_milan
 from pdf_gen import generate_kundali_pdf
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
 
@@ -109,6 +110,15 @@ class BirthDetails(BaseModel):
     time: str         # HH:MM (24h)
     place: str
     problem: Optional[str] = ""
+    language: Optional[str] = "en"
+
+
+LANG_NAMES = {"en": "English", "hi": "Hindi", "bn": "Bengali"}
+
+
+def lang_instruction(language: str) -> str:
+    name = LANG_NAMES.get((language or "en").lower(), "English")
+    return "" if name == "English" else f" Write ALL text values in {name} language (Devanagari/Bengali script as appropriate)."
 
 
 class ProfileInput(BaseModel):
@@ -137,9 +147,10 @@ async def generate_ai_reading(chart: dict, details: BirthDetails, gem: dict) -> 
         return fallback
     try:
         from emergentintegrations.llm.chat import LlmChat, UserMessage
-        system = ("You are an expert Vedic astrologer for Rashisense. Respond ONLY with a compact JSON object, "
+        system = ("You are an expert Vedic astrologer for Rashify. Respond ONLY with a compact JSON object, "
                   "no markdown, no prose outside JSON. Keys: summary, career, love, health, wealth, spiritual, "
-                  "lucky_color, lucky_number (integer), gemstone_reason. Each text value 1-2 warm, specific sentences.")
+                  "lucky_color, lucky_number (integer), gemstone_reason. Each text value 1-2 warm, specific sentences."
+                  + lang_instruction(details.language))
         prompt = (f"Birth chart -> Moon Rashi: {chart['moon_sign']['sa']} ({chart['moon_sign']['en']}), "
                   f"Sun sign: {chart['sun_sign']['sa']}, Ascendant: {chart['ascendant']['sa']}, "
                   f"Nakshatra: {chart['nakshatra']} pada {chart['pada']}, Ruling planet: {chart['ruling_planet']}. "
@@ -294,7 +305,7 @@ async def delete_profile(profile_id: str, user: dict = Depends(get_current_user)
 
 
 # ---------- Daily / Weekly / Yearly horoscope ----------
-async def generate_horoscope(rashi: dict, period: str, date_key: str) -> dict:
+async def generate_horoscope(rashi: dict, period: str, date_key: str, language: str = "en") -> dict:
     fallback = {
         "overview": f"The cosmos turns in favour of {rashi['sa']} ({rashi['en']}) this {period}. Your ruling planet {rashi['planet']} lends steady momentum - trust your rhythm and act with intention.",
         "career": "Focus and consistency open a door you have been waiting on. A senior figure notices your effort.",
@@ -310,7 +321,7 @@ async def generate_horoscope(rashi: dict, period: str, date_key: str) -> dict:
         from emergentintegrations.llm.chat import LlmChat, UserMessage
         system = ("You are a warm, precise Vedic astrologer. Respond ONLY with a JSON object, no markdown. "
                   "Keys: overview, career, love, health, finance, lucky_color, lucky_number (integer). "
-                  "Each text value 1-2 specific, encouraging sentences.")
+                  "Each text value 1-2 specific, encouraging sentences." + lang_instruction(language))
         prompt = (f"Write the {period} horoscope for rashi {rashi['sa']} ({rashi['en']}), ruling planet "
                   f"{rashi['planet']}, element {rashi['element']}, for the period identified as {date_key}. "
                   f"Make it feel fresh and specific to this {period}.")
@@ -332,12 +343,13 @@ async def generate_horoscope(rashi: dict, period: str, date_key: str) -> dict:
 
 
 @api_router.get("/horoscope/{rashi_key}")
-async def horoscope(rashi_key: str, period: str = "daily"):
+async def horoscope(rashi_key: str, period: str = "daily", language: str = "en"):
     rashi = next((r for r in RASHIS if r["key"] == rashi_key), None)
     if not rashi:
         raise HTTPException(status_code=404, detail="Unknown rashi")
     if period not in ("daily", "weekly", "yearly"):
         period = "daily"
+    language = (language or "en").lower()
     now = datetime.now(timezone.utc)
     if period == "daily":
         date_key = now.strftime("%Y-%m-%d")
@@ -346,14 +358,127 @@ async def horoscope(rashi_key: str, period: str = "daily"):
     else:
         date_key = now.strftime("%Y")
 
-    cached = await db.horoscopes.find_one({"rashi": rashi_key, "period": period, "date_key": date_key})
+    cached = await db.horoscopes.find_one({"rashi": rashi_key, "period": period, "date_key": date_key, "language": language})
     if cached:
         return {"rashi": rashi, "period": period, "date_key": date_key, "forecast": cached["forecast"]}
 
-    forecast = await generate_horoscope(rashi, period, date_key)
-    await db.horoscopes.insert_one({"rashi": rashi_key, "period": period, "date_key": date_key,
+    forecast = await generate_horoscope(rashi, period, date_key, language)
+    await db.horoscopes.insert_one({"rashi": rashi_key, "period": period, "date_key": date_key, "language": language,
                                     "forecast": forecast, "created_at": now.isoformat()})
     return {"rashi": rashi, "period": period, "date_key": date_key, "forecast": forecast}
+
+
+# ---------- City autocomplete ----------
+@api_router.get("/cities")
+async def cities(q: str = ""):
+    return {"results": search_cities(q)}
+
+
+# ---------- Kundali Matching (Guna Milan) ----------
+class PersonInput(BaseModel):
+    name: Optional[str] = ""
+    dob: str
+    time: str
+    place: str
+
+
+class MatchInput(BaseModel):
+    boy: PersonInput
+    girl: PersonInput
+
+
+def _moon_details(p: PersonInput):
+    dt = datetime.strptime(f"{p.dob} {p.time}", "%Y-%m-%d %H:%M")
+    loc = geocode(p.place)
+    c = compute_chart(dt, loc["lat"], loc["lon"], loc["tz"])
+    return c["nakshatra_index"], c["moon_rashi_index"], c
+
+
+@api_router.post("/match")
+async def match(inp: MatchInput):
+    try:
+        nb, rb, cb = _moon_details(inp.boy)
+        ng, rg, cg = _moon_details(inp.girl)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date or time format (use YYYY-MM-DD and HH:MM).")
+    result = compute_guna_milan(nb, rb, ng, rg)
+    result["boy"] = {"name": inp.boy.name, "rashi": cb["moon_sign"]["sa"], "nakshatra": cb["nakshatra"]}
+    result["girl"] = {"name": inp.girl.name, "rashi": cg["moon_sign"]["sa"], "nakshatra": cg["nakshatra"]}
+    await db.calc_logs.insert_one({"name": f"Match: {inp.boy.name or 'Boy'} & {inp.girl.name or 'Girl'}",
+                                   "place": "-", "moon_sign": f"{cb['moon_sign']['sa']}/{cg['moon_sign']['sa']}",
+                                   "gemstone": f"Guna {result['total']}/36",
+                                   "created_at": datetime.now(timezone.utc).isoformat()})
+    return result
+
+
+# ---------- AI Dasha insights ----------
+class DashaInsightInput(BaseModel):
+    rashi: str
+    mahadasha: str
+    antardasha: Optional[str] = ""
+    language: Optional[str] = "en"
+
+
+@api_router.post("/dasha/insights")
+async def dasha_insights(inp: DashaInsightInput):
+    fallback = {
+        "overview": f"You are in the {inp.mahadasha} Mahadasha" + (f" with {inp.antardasha} Antardasha" if inp.antardasha else "") + f". This period shapes the themes of your {inp.rashi} moon with the qualities of {inp.mahadasha}.",
+        "career": f"{inp.mahadasha}'s influence favours steady, disciplined progress. Align effort with long-term goals for recognition.",
+        "love": "Relationships deepen through patience and honest communication during this period.",
+        "money": "Finances stabilise with mindful planning; avoid speculative risks while this period runs.",
+    }
+    if not EMERGENT_LLM_KEY:
+        return fallback
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        system = ("You are a Vedic astrologer explaining Vimshottari Dasha. Respond ONLY with JSON, no markdown. "
+                  "Keys: overview, career, love, money. Each 2-3 practical, encouraging sentences."
+                  + lang_instruction(inp.language))
+        prompt = (f"Explain the current period for a {inp.rashi} moon-sign native running {inp.mahadasha} Mahadasha"
+                  + (f" and {inp.antardasha} Antardasha" if inp.antardasha else "")
+                  + ". Cover what it means for career, love and money right now.")
+        chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"dasha-{secrets.token_hex(5)}",
+                       system_message=system).with_model("anthropic", "claude-sonnet-4-6")
+        resp = await chat.send_message(UserMessage(text=prompt))
+        import json, re
+        m = re.search(r"\{.*\}", resp if isinstance(resp, str) else str(resp), re.DOTALL)
+        if m:
+            data = json.loads(m.group(0))
+            for k, v in fallback.items():
+                data.setdefault(k, v)
+            return data
+        return fallback
+    except Exception as e:
+        logger.warning(f"Dasha insights failed: {e}")
+        return fallback
+
+
+# ---------- Site settings (admin-editable) ----------
+DEFAULT_SETTINGS = {
+    "brand_name": "Rashify",
+    "hero_title_gold": "Discover Your Cosmic",
+    "hero_title_plain": "Alignment & True Rashi",
+    "hero_subtitle": "Enter your birth date, exact time and place. Rashify reveals your real Vedic Rashi, a personalised horoscope, and the precise gemstone that can turn your situation around.",
+    "pdf_price_inr": PDF_PRICE_INR,
+}
+
+
+@api_router.get("/settings")
+async def get_settings():
+    doc = await db.settings.find_one({"_id": "site"})
+    if not doc:
+        return DEFAULT_SETTINGS
+    doc.pop("_id", None)
+    return {**DEFAULT_SETTINGS, **doc}
+
+
+@api_router.put("/admin/settings")
+async def update_settings(payload: dict, admin: dict = Depends(get_admin_user)):
+    payload.pop("_id", None)
+    await db.settings.update_one({"_id": "site"}, {"$set": payload}, upsert=True)
+    doc = await db.settings.find_one({"_id": "site"})
+    doc.pop("_id", None)
+    return {**DEFAULT_SETTINGS, **doc}
 
 
 # ---------- Discount codes + Paid PDF ----------

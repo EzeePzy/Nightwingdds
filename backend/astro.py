@@ -126,6 +126,8 @@ def compute_chart(birth_dt: datetime, lat: float, lon: float, tz_name: str = "As
         "planet_degrees": planet_degrees,
         "navamsa_positions": navamsa_positions,
         "navamsa_ascendant": navamsa_ascendant,
+        "nakshatra_index": nak_index,
+        "moon_rashi_index": int(moon_long // 30),
         "ayanamsa": round(ayanamsa, 4),
         "accuracy": "swiss_ephemeris_lahiri",
         "dasha": dasha["periods"],
