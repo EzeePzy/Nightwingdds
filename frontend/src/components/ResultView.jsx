@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Sun, Moon, ArrowUpRight, Star, Sparkles, Gem, Globe, Info, Hourglass, ChevronDown, ChevronUp, Download, FileText, Tag, Briefcase, Heart, Activity, Coins, Flower2, Palette, Hash } from "lucide-react";
 import { toast } from "sonner";
@@ -64,7 +64,8 @@ export default function ResultView({ result, readingId }) {
   const [discount, setDiscount] = useState("");
   const [discountInfo, setDiscountInfo] = useState(null);
   const [payBusy, setPayBusy] = useState(false);
-  const PRICE = 199;
+  const [PRICE, setPRICE] = useState(199);
+  useEffect(() => { api.get("/settings").then((r) => setPRICE(Number(r.data.pdf_price_inr) || 199)).catch(() => {}); }, []);
   const finalPrice = discountInfo?.valid ? Math.round(PRICE * (1 - discountInfo.percent / 100)) : PRICE;
 
   const applyDiscount = async () => {

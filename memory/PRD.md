@@ -31,7 +31,15 @@ Astrology website "Rashisense" where users know their horoscope and true Vedic R
 - Daily/Weekly/Yearly AI horoscope (Claude) cached per rashi+period+date. Family Profiles CRUD (save/switch birth details).
 - Vimshottari Dasha timeline computed from Moon nakshatra (matches professional chart's Mercury balance 9.16y); planetary degrees shown in Kundali.
 
+## Implemented (Rashify v6)
+- Renamed to **Rashify**. i18n English/Hindi/Bengali (nav, hero, buttons, calculator, matching) via LanguageProvider; language also passed to AI (readings/horoscope/dasha).
+- Day/night auto theme + greeting ("Good morning/evening, visitor!") with manual toggle in a three-dot menu; language selector beside it (top-right).
+- Homepage Daily Horoscope widget + Kundali Matching card. New **Guna Milan** 36-point Ashtakoot matching page (/matching).
+- Rashi Calculator birthplace **auto-suggest** (City, Country after 2 letters) via /api/cities.
+- **AI Dasha insights** (career/love/money for current Mahadasha+Antardasha).
+- Admin **Site Settings** tab (brand, hero title/subtitle, PDF price) — consumed by the homepage hero and PDF checkout price. Settings keys whitelisted server-side.
+
 ## Backlog (P1/P2)
-- P1: Email the PDF after purchase (NOT yet built — needs an email provider key e.g. Resend/SendGrid).
-- P2: Navamsa full nested divisional set (D3/D10), one-time-use signed PDF download tokens.
-- P2: Gemstone catalog editing from admin (currently read-only), password reset flow.
+- P1: Email the PDF after purchase (NOT built — user chose to skip; needs Resend/SendGrid key).
+- P1: Connect a live Stripe/Razorpay account (currently Stripe TEST mode by user choice).
+- P2: Localize the hero H1 via i18n (currently admin-editable English); token-based one-time PDF download links; multi-word city search (token-start match).

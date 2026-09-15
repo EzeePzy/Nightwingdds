@@ -1,0 +1,32 @@
+{
+  "summary": "Full-stack testing of Rashify v6 (cities autocomplete, Guna Milan /matching, AI Dasha insights, editable Site Settings, i18n en/hi/bn, day/night theme + greeting). Added /app/backend/tests/test_rashify_v6.py with 9 focused tests covering: /api/cities (short-query empty + populated results), /api/match (Ashtakoot 8 kootas, sum==total, max_total==36, boy/girl rashi+nakshatra), /api/dasha/insights (overview/career/love/money non-empty), GET+PUT /api/settings persistence, non-admin PUT forbidden (403), /api/rashi/calculate with language='hi' full reading, /api/horoscope/mesha?language=hi. ALL 9 NEW TESTS PASS. Full regression: 57/57 pass (stale dasha tests from iteration 5 are now clean). Frontend Playwright E2E: header language-selector + three-dot-menu-button present, theme toggle flips greeting Good morning<->Good evening in real time, Hindi/Bengali translate nav labels + hero CTA, home-daily-horoscope widget loads (rashi-vrishabha overview 337 chars), home-match-cta navigates to /matching, Guna Milan full flow (Ravi/Jaipur x Sita/Delhi via CityAutocomplete) -> match-result-card total 26/36 + 8 koota-* rows, calculator autocomplete typing 'Ja' returns 8 suggestions -> fills 'Jakarta, Indonesia', full chart+dasha renders, dasha-insights-button -> panel with Career/Love/Money (459 chars), admin Site Settings tab loads/saves brand_name='Rashify' + pdf_price_inr=249 with 'Site settings saved' toast. Everything green.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Landing hero", "issues": ["The hero H1 (gold + plain lines) is hardcoded in Landing.jsx to 'Discover Your Cosmic / Alignment & True Rashi' and does NOT read from GET /api/settings. Admin can edit hero_title_gold / hero_title_plain / hero_subtitle in Site Settings and the values persist server-side, but the homepage never renders them — the settings form is effectively a no-op for the hero. Wire Landing.jsx to fetch /api/settings and use settings.hero_title_gold / hero_title_plain / hero_subtitle / brand_name.", "The hero H1 and subtitle are also not passed through the i18n t() helper, so switching to Hindi/Bengali leaves the two-line hero headline and its subtitle in English. Only the badge, greeting, and CTA buttons translate."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_rashify_v6.py",
+    "/app/test_reports/pytest/rashify_v6.xml",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Low) Wire Landing.jsx to consume GET /api/settings so admin edits to hero_title_gold / hero_title_plain / hero_subtitle / brand_name actually appear on the homepage; today the fields save but never render.",
+    "(Low) Localize the hero H1 and subtitle via t() so the Hindi/Bengali switch also translates the main headline; currently only nav + badge + CTAs translate."
+  ],
+  "critical_code_review_comments": [
+    "server.py PUT /api/admin/settings blindly $set's any keys from the payload dict — an admin could store arbitrary garbage keys in the settings doc. Consider a Pydantic model whitelisting brand_name, hero_title_gold, hero_title_plain, hero_subtitle, pdf_price_inr.",
+    "PDF price is still hardcoded to 199 in ResultView.jsx (const PRICE = 199) even though the admin can edit pdf_price_inr — the frontend cart total won't reflect an admin-set price. Fetch from /api/settings.",
+    "geo.py search_cities does prefix-only match on the exact city name; user typing '2+ letters' works but multi-word queries (e.g. 'new de') won't match 'New Delhi' unless the first token matches. Consider matching on token starts."
+  ],
+  "updated_files": ["/app/backend/tests/test_rashify_v6.py"],
+  "success_rate": {"backend": "100% (57/57 total incl. 9 new)", "frontend": "100% on all 12 requested flows"},
+  "test_credentials": "Admin: admin / Rashi@2026. Ephemeral users registered per-run as testuser_<hex>@example.com / User@2026.",
+  "seed_data_creation": "None permanent. Test user registered via API during Playwright run; settings mutated to brand_name='Rashify', pdf_price_inr=249 (final saved state).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "test_rashify_v6.py is the canonical regression for this iteration's new endpoints (cities, match, dasha/insights, settings, language). Playwright covered language + theme + greeting + matching + calculator autocomplete + dasha insights + admin settings. Note the hardcoded hero title/subtitle on Landing.jsx — if E1 wires admin settings into the hero, retest that the homepage reflects a PUT /api/admin/settings change and that Hindi/Bengali translate the hero headline."
+}

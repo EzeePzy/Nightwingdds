@@ -474,8 +474,14 @@ async def get_settings():
 
 @api_router.put("/admin/settings")
 async def update_settings(payload: dict, admin: dict = Depends(get_admin_user)):
-    payload.pop("_id", None)
-    await db.settings.update_one({"_id": "site"}, {"$set": payload}, upsert=True)
+    allowed = {"brand_name", "hero_title_gold", "hero_title_plain", "hero_subtitle", "pdf_price_inr"}
+    clean = {k: v for k, v in payload.items() if k in allowed}
+    if "pdf_price_inr" in clean:
+        try:
+            clean["pdf_price_inr"] = float(clean["pdf_price_inr"])
+        except (TypeError, ValueError):
+            clean.pop("pdf_price_inr")
+    await db.settings.update_one({"_id": "site"}, {"$set": clean}, upsert=True)
     doc = await db.settings.find_one({"_id": "site"})
     doc.pop("_id", None)
     return {**DEFAULT_SETTINGS, **doc}
@@ -523,7 +529,9 @@ async def pdf_checkout(inp: PdfCheckoutInput, request: Request, user: dict = Dep
     disc = await _find_active_discount(inp.discount_code)
     if disc:
         percent = disc["percent"]
-    amount = round(PDF_PRICE_INR * (1 - percent / 100.0), 2)
+    settings_doc = await db.settings.find_one({"_id": "site"}) or {}
+    base_price = float(settings_doc.get("pdf_price_inr", PDF_PRICE_INR))
+    amount = round(base_price * (1 - percent / 100.0), 2)
 
     # Free (100% off) -> unlock without Stripe
     if amount <= 0:

@@ -48,6 +48,8 @@ export default function Landing() {
   const { mode, greetKey } = useTheme();
   const { t } = useI18n();
   const isLight = mode === "light";
+  const [site, setSite] = useState(null);
+  useEffect(() => { api.get("/settings").then((r) => setSite(r.data)).catch(() => {}); }, []);
 
   return (
     <div className="relative rs-cosmic">
@@ -62,11 +64,11 @@ export default function Landing() {
                 <Sparkles className="h-3.5 w-3.5" /> {t("hero.badge")}
               </span>
               <h1 data-testid="hero-headline" className={`mt-6 font-serif text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl ${isLight ? "text-slate-800" : ""}`}>
-                <span className="rs-gold-text">Discover Your Cosmic</span><br />
-                <span className={isLight ? "text-slate-800" : "text-slate-100"}>Alignment & True Rashi</span>
+                <span className="rs-gold-text">{site?.hero_title_gold || "Discover Your Cosmic"}</span><br />
+                <span className={isLight ? "text-slate-800" : "text-slate-100"}>{site?.hero_title_plain || "Alignment & True Rashi"}</span>
               </h1>
               <p data-testid="hero-subtitle" className={`mt-5 max-w-lg text-base leading-relaxed sm:text-lg ${isLight ? "text-slate-600" : "text-slate-300"}`}>
-                Enter your birth date, exact time and place. Rashify reveals your real Vedic Rashi, a personalised horoscope, and the precise gemstone that can turn your situation around.
+                {site?.hero_subtitle || "Enter your birth date, exact time and place. Rashify reveals your real Vedic Rashi, a personalised horoscope, and the precise gemstone that can turn your situation around."}
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
                 <Link to="/calculator" data-testid="hero-calculate-cta-button" className="rs-gold-btn rs-tap flex items-center gap-2 rounded-full px-7 py-3.5 text-base">
