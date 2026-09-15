@@ -103,6 +103,8 @@ def compute_chart(birth_dt: datetime, lat: float, lon: float, tz_name: str = "As
     planet_positions = {p: _rashi_of(lng)["sa"] for p, lng in positions.items()}
     planet_degrees = {p: round(lng % 30.0, 2) for p, lng in positions.items()}
 
+    dasha = compute_vimshottari(birth_dt, nak_index, within, nak_span)
+
     return {
         "moon_sign": moon_rashi,
         "sun_sign": sun_rashi,
@@ -116,7 +118,46 @@ def compute_chart(birth_dt: datetime, lat: float, lon: float, tz_name: str = "As
         "planet_degrees": planet_degrees,
         "ayanamsa": round(ayanamsa, 4),
         "accuracy": "swiss_ephemeris_lahiri",
+        "dasha": dasha["periods"],
+        "current_dasha": dasha["current"],
     }
+
+
+# Vimshottari Dasha: 120-year cycle. Nakshatra lords repeat every 9 nakshatras.
+_DASHA_SEQ = [
+    ("Ketu", 7), ("Venus", 20), ("Sun", 6), ("Moon", 10), ("Mars", 7),
+    ("Rahu", 18), ("Jupiter", 16), ("Saturn", 19), ("Mercury", 17),
+]
+_DAYS_PER_YEAR = 365.2425
+
+
+def compute_vimshottari(birth_dt: datetime, nak_index: int, within: float, nak_span: float):
+    """Vimshottari Mahadasha timeline anchored to the Moon's nakshatra at birth."""
+    from datetime import timedelta
+
+    start_idx = nak_index % 9
+    remaining_fraction = (nak_span - within) / nak_span
+
+    periods = []
+    cursor = birth_dt
+    today = datetime.now()
+    current = None
+    for i in range(10):  # one full 120-yr cycle + balance
+        lord, years = _DASHA_SEQ[(start_idx + i) % 9]
+        span_years = years * remaining_fraction if i == 0 else float(years)
+        end = cursor + timedelta(days=span_years * _DAYS_PER_YEAR)
+        entry = {
+            "planet": lord,
+            "start": cursor.strftime("%Y-%m-%d"),
+            "end": end.strftime("%Y-%m-%d"),
+            "years": round(span_years, 2),
+        }
+        if cursor <= today < end:
+            entry["is_current"] = True
+            current = entry
+        periods.append(entry)
+        cursor = end
+    return {"periods": periods, "current": current}
 
 
 def recommend_gemstone(chart, problem_hint: str = ""):

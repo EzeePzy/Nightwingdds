@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Sun, Moon, ArrowUpRight, Star, Sparkles, Gem, Globe, Info, Briefcase, Heart, Activity, Coins, Flower2, Palette, Hash } from "lucide-react";
+import { Sun, Moon, ArrowUpRight, Star, Sparkles, Gem, Globe, Info, Hourglass, Briefcase, Heart, Activity, Coins, Flower2, Palette, Hash } from "lucide-react";
 import KundaliChart from "./KundaliChart";
 
 const GEM_IMG = {
@@ -74,7 +74,7 @@ export default function ResultView({ result }) {
             {Object.entries(chart.planet_positions).map(([p, s]) => (
               <div key={p} className="rounded-lg border border-amber-500/15 bg-white/5 px-2 py-1.5">
                 <span className="text-amber-300">{p}</span>
-                <span className="block text-slate-400">{s}</span>
+                <span className="block text-slate-400">{s}{typeof chart.planet_degrees?.[p] === "number" ? ` ${chart.planet_degrees[p]}°` : ""}</span>
               </div>
             ))}
           </div>
@@ -110,6 +110,35 @@ export default function ResultView({ result }) {
           </motion.div>
         </div>
       </div>
+
+      {/* Vimshottari Dasha timeline */}
+      {chart.dasha && chart.dasha.length > 0 && (
+        <div data-testid="dasha-timeline" className="rs-card p-6 sm:p-8">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="flex items-center gap-2 font-serif text-2xl text-amber-100"><Hourglass className="h-5 w-5 text-amber-400" /> Vimshottari Dasha</h3>
+            {chart.current_dasha && (
+              <span data-testid="dasha-current" className="rounded-full border border-amber-400/50 bg-amber-500/15 px-3 py-1 text-xs text-amber-200">
+                Running now: <b>{chart.current_dasha.planet} Mahadasha</b> ({chart.current_dasha.start} → {chart.current_dasha.end})
+              </span>
+            )}
+          </div>
+          <p className="mb-5 text-sm text-slate-400">Planetary periods calculated from your Moon's nakshatra ({chart.nakshatra}) — the 120-year cycle that times life's chapters.</p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {chart.dasha.map((d, i) => (
+              <div key={i} className={`flex items-center justify-between rounded-lg border px-3 py-2.5 ${d.is_current ? "border-amber-400/60 bg-amber-500/10" : "border-amber-500/15 bg-white/5"}`}>
+                <div className="flex items-center gap-2">
+                  <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${d.is_current ? "bg-amber-500/30 text-amber-100" : "bg-white/10 text-amber-300"}`}>{d.planet[0]}</span>
+                  <div>
+                    <div className="text-sm text-slate-100">{d.planet}</div>
+                    <div className="text-[11px] text-slate-400">{d.years} yrs</div>
+                  </div>
+                </div>
+                <div className="text-right text-[11px] text-slate-400">{d.start}<br />{d.end}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Gemstone recommendation */}
       <div data-testid="gemstone-recommendation-card" className="rs-card overflow-hidden p-0">
