@@ -82,6 +82,10 @@ def compute_chart(birth_dt: datetime, lat: float, lon: float, tz_name: str = "As
     moon_long = positions["Moon"]
     sun_long = positions["Sun"]
 
+    # Western / tropical Sun sign (what most people casually call their "sign")
+    trop_sun = swe.calc_ut(jd, swe.SUN, swe.FLG_SWIEPH)[0][0] % 360.0
+    western_sun = _rashi_of(trop_sun)
+
     # Ascendant (Lagna) from lat/lon + sidereal time
     ascmc = swe.houses_ex(jd, lat, lon, b"W", _SID_FLAG)[1]
     asc_long = ascmc[0] % 360.0
@@ -102,6 +106,7 @@ def compute_chart(birth_dt: datetime, lat: float, lon: float, tz_name: str = "As
     return {
         "moon_sign": moon_rashi,
         "sun_sign": sun_rashi,
+        "western_sun_sign": western_sun,
         "ascendant": asc_rashi,
         "nakshatra": NAKSHATRAS[nak_index],
         "pada": pada,

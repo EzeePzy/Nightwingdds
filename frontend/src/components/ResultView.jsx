@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Sun, Moon, ArrowUpRight, Star, Sparkles, Gem, Briefcase, Heart, Activity, Coins, Flower2, Palette, Hash } from "lucide-react";
+import { Sun, Moon, ArrowUpRight, Star, Sparkles, Gem, Globe, Info, Briefcase, Heart, Activity, Coins, Flower2, Palette, Hash } from "lucide-react";
 import KundaliChart from "./KundaliChart";
 
 const GEM_IMG = {
@@ -37,12 +37,21 @@ export default function ResultView({ result }) {
   return (
     <div className="space-y-8">
       {/* Signs summary */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <Stat icon={Moon} label="Moon Rashi" value={`${chart.moon_sign.sa}`} testid="rashi-result-moon-sign" />
-        <Stat icon={Sun} label="Sun Sign" value={chart.sun_sign.sa} testid="rashi-result-sun-sign" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <Stat icon={Moon} label="Rashi (Moon)" value={chart.moon_sign.sa} testid="rashi-result-moon-sign" />
+        <Stat icon={Globe} label="Western Sign" value={chart.western_sun_sign ? chart.western_sun_sign.en : chart.sun_sign.en} testid="rashi-result-western-sign" />
+        <Stat icon={Sun} label="Vedic Sun" value={chart.sun_sign.sa} testid="rashi-result-sun-sign" />
         <Stat icon={ArrowUpRight} label="Ascendant" value={chart.ascendant.sa} testid="rashi-result-ascendant" />
         <Stat icon={Star} label="Nakshatra" value={`${chart.nakshatra} (${chart.pada})`} testid="rashi-result-nakshatra" />
         <Stat icon={Sparkles} label="Ruling Planet" value={chart.ruling_planet} testid="rashi-result-ruling-planet" />
+      </div>
+
+      <div className="flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-slate-300">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+        <p>
+          Your true Vedic <b className="text-amber-200">Rashi (Janma Rashi)</b> is your Moon sign: <b className="text-amber-100">{chart.moon_sign.sa} ({chart.moon_sign.en})</b>.
+          The popular "star sign" you may know (e.g. from newspapers) is the Western Sun sign shown above{chart.western_sun_sign ? <>: <b className="text-amber-100">{chart.western_sun_sign.en}</b></> : null}. In Vedic astrology, predictions are based on the Moon rashi.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
