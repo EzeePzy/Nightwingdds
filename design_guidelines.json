@@ -1,0 +1,203 @@
+{
+  "app_name": "Rashisense",
+  "app_type": "hybrid_fullstack",
+  "design_theme": "Mystical Dark + Indian Traditional Cosmic Luxury",
+  "emotional_tone": "Sacred, Majestic, Insightful, Precise, Spiritual & High-Tech",
+  "typography": {
+    "font_family_heading": "'Cormorant Garamond', 'Cinzel', 'Playfair Display', serif",
+    "font_family_body": "'Plus Jakarta Sans', 'Manrope', -apple-system, sans-serif",
+    "font_family_mono": "'JetBrains Mono', 'Fira Code', monospace",
+    "hierarchy": {
+      "h1_hero": "text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-none font-serif text-amber-200",
+      "h2_section": "text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-normal font-serif text-amber-100",
+      "h3_card_title": "text-xl sm:text-2xl font-medium font-serif text-amber-50",
+      "h4_sub": "text-lg sm:text-xl font-medium font-sans text-slate-200",
+      "body": "text-base font-normal leading-relaxed text-slate-300",
+      "body_sm": "text-sm text-slate-400",
+      "label_overline": "text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/90"
+    }
+  },
+  "colors": {
+    "background_primary": "#0B0D1B",
+    "background_secondary": "#13102B",
+    "background_card": "rgba(23, 20, 50, 0.75)",
+    "background_card_hover": "rgba(32, 28, 70, 0.85)",
+    "border_subtle": "rgba(226, 158, 56, 0.2)",
+    "border_active": "rgba(243, 200, 104, 0.6)",
+    "accent_gold": "#E29E38",
+    "accent_gold_bright": "#F3C868",
+    "accent_crimson": "#8B1E2D",
+    "accent_teal_cosmic": "#12B5A6",
+    "text_primary": "#F8FAFC",
+    "text_muted": "#94A3B8",
+    "text_gold": "#FDE68A",
+    "gradient_hero": "bg-gradient-to-b from-[#0B0D1B] via-[#13102B] to-[#0B0D1B]",
+    "gradient_gold_btn": "bg-gradient-to-r from-[#D97706] via-[#E29E38] to-[#F59E0B]",
+    "gradient_card_glow": "bg-gradient-to-br from-amber-500/10 via-purple-900/20 to-teal-500/10"
+  },
+  "visual_enhancers": {
+    "glassmorphism": "backdrop-blur-xl bg-[#13102B]/75 border border-[#E29E38]/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+    "card_style": "rounded-2xl border border-amber-500/20 bg-[#13102B]/70 backdrop-blur-md p-6 sm:p-8 transition-all duration-300 hover:border-amber-400/50 hover:shadow-[0_0_25px_rgba(226,158,56,0.15)]",
+    "kundali_chart_style": "aspect-square w-full max-w-md mx-auto relative border-2 border-amber-500/40 bg-[#090A15] rounded-xl p-4 shadow-[0_0_30px_rgba(226,158,56,0.1)]",
+    "gold_glow_text": "text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-200 drop-shadow-[0_2px_10px_rgba(226,158,56,0.3)]",
+    "traditional_border_motif": "border-t-2 border-b-2 border-amber-500/30 relative before:content-['◈'] before:absolute before:-top-3 before:left-1/2 before:-translate-x-1/2 before:bg-[#0B0D1B] before:px-2 before:text-amber-400"
+  },
+  "grids": {
+    "landing_bento": "grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8",
+    "dashboard_grid": "grid grid-cols-1 lg:grid-cols-3 gap-6",
+    "horoscope_grid": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+  },
+  "motion": {
+    "hover_lift": "hover:-translate-y-1 transition-transform duration-200 ease-out",
+    "pulse_cosmic": "animate-pulse duration-1000",
+    "framer_entrance": "initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}"
+  },
+  "image_urls": {
+    "hero_cosmic_wheel": {
+      "url": "https://images.unsplash.com/photo-1729335511904-9b8690184935?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHwzfHxhc3Ryb2xvZ3klMjB6b2RpYWMlMjBuaWdodCUyMHNreSUyMGNvc21pYyUyMGdlbXN0b25lfGVufDB8fHx8MTc4OTQ3NTg3Mnww&ixlib=rb-4.1.0&q=85",
+      "description": "Zodiac wheel with astrological symbols and figures",
+      "category": "hero_background_and_graphic"
+    },
+    "cosmic_night_sky": {
+      "url": "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHwyfHxhc3Ryb2xvZ3klMjB6b2RpYWMlMjBuaWdodCUyMHNreSUyMGNvc21pYyUyMGdlbXN0b25lfGVufDB8fHx8MTc4OTQ3NTg3Mnww&ixlib=rb-4.1.0&q=85",
+      "description": "Deep purple and starry cosmos night sky",
+      "category": "section_background"
+    },
+    "horoscope_globe": {
+      "url": "https://images.unsplash.com/photo-1532968961962-8a0cb3a2d4f5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHw0fHxhc3Ryb2xvZ3klMjB6b2RpYWMlMjBuaWdodCUyMHNreSUyMGNvc21pYyUyMGdlbXN0b25lfGVufDB8fHx8MTc4OTQ3NTg3Mnww&ixlib=rb-4.1.0&q=85",
+      "description": "Celestial globe with astrological constellations",
+      "category": "horoscope_feature_card"
+    },
+    "gemstone_display_trio": {
+      "url": "https://images.unsplash.com/photo-1653405507161-da7d205d86f4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHw0fHxwcmVjaW91cyUyMGdlbXN0b25lcyUyMHJ1YnklMjBzYXBwaGlyZSUyMGVtZXJhbGQlMjBjcnlzdGFsfGVufDB8fHx8MTc4OTQ3NTg3OXww&ixlib=rb-4.1.0&q=85",
+      "description": "Three facetted precious gems (Sapphire, Emerald, Chrysoberyl) on dark background",
+      "category": "gemstone_recommendation_card"
+    },
+    "emerald_gemstone": {
+      "url": "https://images.unsplash.com/photo-1600119612651-0db31b3a7baa?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwxfHxwcmVjaW91cyUyMGdlbXN0b25lcyUyMHJ1YnklMjBzYXBwaGlyZSUyMGVtZXJhbGQlMjBjcnlzdGFsfGVufDB8fHx8MTc4OTQ3NTg3OXww&ixlib=rb-4.1.0&q=85",
+      "description": "Luminous green emerald sphere gem",
+      "category": "gemstone_detail_view"
+    },
+    "diamond_gemstone": {
+      "url": "https://images.unsplash.com/photo-1679531751641-79f78cbb5c0b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHszfHxwcmVjaW91cyUyMGdlbXN0b25lcyUyMHJ1YnklMjBzYXBwaGlyZSUyMGVtZXJhbGQlMjBjcnlzdGFsfGVufDB8fHx8MTc4OTQ3NTg3OXww&ixlib=rb-4.1.0&q=85",
+      "description": "Radiant multi-faceted pink/clear gemstone diamond",
+      "category": "gemstone_detail_view"
+    }
+  },
+  "key_functionalities_and_components": {
+    "1_navigation_bar": {
+      "description": "Sticky dark glassmorphism top bar with Rashisense logo (sacred sun/moon icon), navigation links (Calculator, Gemstones, Daily Horoscope, Dashboard, Admin), User Auth status (Login/Signup triggers or User Profile avatar), and admin shortcut link.",
+      "data_testids": [
+        "nav-logo",
+        "nav-link-calculator",
+        "nav-link-gemstones",
+        "nav-link-horoscope",
+        "nav-link-dashboard",
+        "nav-link-admin",
+        "nav-auth-login-button",
+        "nav-auth-signup-button",
+        "nav-user-menu"
+      ]
+    },
+    "2_landing_hero": {
+      "description": "High-impact spiritual hero with headline 'Discover Your Cosmic Alignment & Vedic Rashi', instant Birth Details Calculator CTA, interactive horoscope preview ticker for all 12 Rashis (Mesha, Vrishabha, Mithuna, Karka, Simha, Kanya, Tula, Vrishchika, Dhanu, Makara, Kumbha, Meena), and feature breakdown grid.",
+      "data_testids": [
+        "hero-headline",
+        "hero-subtitle",
+        "hero-calculate-cta-button",
+        "hero-gemstone-cta-button",
+        "rashi-ticker-item-mesha",
+        "rashi-ticker-item-vrishabha"
+      ]
+    },
+    "3_birth_details_form": {
+      "description": "Comprehensive Vedic astrology calculation form asking for: Full Name, Gender, Date of Birth (DatePicker or split Inputs), Birth Time in 24-hour format (HH:MM), Exact Birth City/Location (with auto-suggest city dropdown or input), and optional current problem description for gemstone matching.",
+      "data_testids": [
+        "birth-form-name-input",
+        "birth-form-dob-input",
+        "birth-form-[#0B0D1B]-time-input",
+        "birth-form-location-input",
+        "birth-form-problem-textarea",
+        "birth-form-submit-button"
+      ]
+    },
+    "4_rashi_and_planetary_result_view": {
+      "description": "Calculated Vedic Result Display: Shows Primary Rashi (Moon Sign), Sun Sign, Lagna (Ascendant), Nakshatra & Pada, Ruling Planet (Graha), North Indian/South Indian style Kundali grid rendering, planetary positions breakdown (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu), and calculation confidence indicator.",
+      "data_testids": [
+        "rashi-result-moon-sign",
+        "rashi-result-sun-sign",
+        "rashi-result-ascendant",
+        "rashi-result-nakshatra",
+        "rashi-result-ruling-planet",
+        "kundali-chart-container",
+        "save-reading-button",
+        "export-reading-button"
+      ]
+    },
+    "5_horoscope_reading_tabs": {
+      "description": "AI + Algorithmic Horoscope engine tabs: Daily, Weekly, Yearly forecasts split across core life pillars: Career & Finance, Love & Relationships, Health & Energy, Spiritual Guidance, Lucky Color, Lucky Number, and Auspicious Hours.",
+      "data_testids": [
+        "horoscope-tab-daily",
+        "horoscope-tab-weekly",
+        "horoscope-tab-yearly",
+        "horoscope-content-career",
+        "horoscope-content-love",
+        "horoscope-content-health",
+        "horoscope-content-wealth"
+      ]
+    },
+    "6_gemstone_recommendation_card": {
+      "description": "Specialized Gemstone Analyzer: Analyzes user's calculated Rashi + current planetary dasha + user described problem (e.g. stress, financial delay, health issue). Recommends primary gemstone (e.g., Manik/Ruby, Panna/Emerald, Pukhraj/Yellow Sapphire, Neelam/Blue Sapphire) with detailed wear rules: Metal type (Gold/Silver/Copper), Finger, Day of week, Mantra ritual, and cautions.",
+      "data_testids": [
+        "gemstone-recommendation-card",
+        "gemstone-name-title",
+        "gemstone-problem-match-reason",
+        "gemstone-metal-instruction",
+        "gemstone-finger-instruction",
+        "gemstone-mantra-box",
+        "gemstone-image-preview"
+      ]
+    },
+    "7_user_dashboard": {
+      "description": "Personalized user account control panel showing: Saved Birth Details profiles (for self, family, friends), Past Reading History list with timestamps, Bookmarked Gemstone recommendations, Quick recalculate CTA, and Profile Settings.",
+      "data_testids": [
+        "dashboard-container",
+        "dashboard-saved-profiles-list",
+        "dashboard-past-readings-list",
+        "dashboard-gemstones-saved",
+        "dashboard-add-profile-button",
+        "dashboard-delete-profile-button"
+      ]
+    },
+    "8_admin_panel": {
+      "description": "Protected Admin Control Hub with credential login (default credentials modal hint / admin route `/admin`). Includes: Registered users list & status, System calculation log analytics, Gemstones catalog editor (add/edit gemstone remedies), AI Horoscope generation settings toggle.",
+      "data_testids": [
+        "admin-login-username-input",
+        "admin-login-password-input",
+        "admin-login-submit-button",
+        "admin-dashboard-users-table",
+        "admin-dashboard-logs-list",
+        "admin-dashboard-gemstone-editor",
+        "admin-stats-total-users",
+        "admin-stats-total-readings"
+      ]
+    }
+  },
+  "instructions_to_main_agent": [
+    "Import Google Fonts in index.html for 'Cormorant Garamond', 'Cinzel', and 'Plus Jakarta Sans'.",
+    "Ensure dark theme class is enabled on root html/body by default with background #0B0D1B.",
+    "Do NOT use pure white backgrounds anywhere; use deep indigo (#13102B) cards with amber gold (#E29E38) borders.",
+    "Implement both mathematical Vedic calculation rules (Rashi based on birth date/time/place) AND AI personalized reading generation for horoscopes & gemstone advice.",
+    "Include sample seed data for user profiles, gemstone database (Ruby, Pearl, Coral, Emerald, Yellow Sapphire, Diamond, Blue Sapphire, Hessonite, Cat's Eye), and past readings so the app is instantly rich and operational.",
+    "Ensure Admin login functionality accepts username/password (e.g. admin / rashisense2026 or configurable) and presents an administrative interface.",
+    "Use lucide-react or phosphor icons for astrological symbols, celestial stars, gemstones, user profile, lock, and dashboard items.",
+    "Add 'data-testid' to all key buttons, form inputs, tabs, result displays, and navigation elements as specified."
+  ],
+  "GENERAL UI UX DESIGN GUIDELINES": [
+    "Never use raw transparent drop-down menus; always add solid backdrop blur with dark indigo tint.",
+    "Ensure text contrast meets WCAG AA standards (gold and white text over dark indigo backgrounds).",
+    "All interactive elements must have hover, active, and focus rings using amber gold accent hues.",
+    "Responsive design must handle mobile screens (<640px) with smooth drawer menus and stacked cards.",
+    "Containers with borders MUST have generous internal padding (p-6 or p-8) to avoid text collision."
+  ]
+}

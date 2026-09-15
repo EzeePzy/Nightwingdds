@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --rs-bg: #0B0D1B;
+  --rs-bg2: #13102B;
+  --rs-gold: #E29E38;
+  --rs-gold-bright: #F3C868;
+  --rs-crimson: #8B1E2D;
+}
+
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #0B0D1B;
+  color: #F8FAFC;
+}
+
+.font-serif { font-family: 'Cormorant Garamond', serif; }
+.font-display { font-family: 'Cinzel', serif; }
+
+@layer base {
+  :root {
+    --background: 234 45% 8%;
+    --foreground: 210 40% 98%;
+    --card: 250 44% 12%;
+    --card-foreground: 210 40% 98%;
+    --popover: 250 44% 10%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 38 75% 55%;
+    --primary-foreground: 234 45% 8%;
+    --secondary: 250 30% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 250 25% 18%;
+    --muted-foreground: 215 20% 70%;
+    --accent: 38 60% 45%;
+    --accent-foreground: 234 45% 8%;
+    --destructive: 0 63% 40%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 38 40% 30%;
+    --input: 250 30% 22%;
+    --ring: 38 75% 55%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+}
+
+/* Cosmic backdrop */
+.rs-cosmic {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(226,158,56,0.12), transparent 60%),
+    radial-gradient(900px 500px at 10% 10%, rgba(18,181,166,0.10), transparent 55%),
+    linear-gradient(180deg, #0B0D1B 0%, #13102B 50%, #0B0D1B 100%);
+}
+
+.rs-card {
+  border-radius: 1rem;
+  border: 1px solid rgba(226,158,56,0.2);
+  background: rgba(19,16,43,0.72);
+  backdrop-filter: blur(14px);
+  transition: border-color .3s ease, box-shadow .3s ease, transform .3s ease;
+}
+.rs-card:hover {
+  border-color: rgba(243,200,104,0.55);
+  box-shadow: 0 0 28px rgba(226,158,56,0.14);
+}
+
+.rs-gold-text {
+  background: linear-gradient(90deg, #FDE68A, #E29E38, #F3C868);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.rs-gold-btn {
+  background: linear-gradient(90deg, #D97706, #E29E38, #F59E0B);
+  color: #0B0D1B;
+  font-weight: 600;
+  transition: filter .2s ease, transform .2s ease, box-shadow .2s ease;
+  box-shadow: 0 6px 20px rgba(226,158,56,0.25);
+}
+.rs-gold-btn:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 10px 28px rgba(226,158,56,0.35); }
+
+.rs-divider {
+  position: relative;
+  border-top: 1px solid rgba(226,158,56,0.25);
+}
+.rs-divider::before {
+  content: '◈';
+  position: absolute; top: -0.7rem; left: 50%; transform: translateX(-50%);
+  background: #0B0D1B; padding: 0 0.6rem; color: #E29E38; font-size: 0.9rem;
+}
+
+::selection { background: rgba(226,158,56,0.35); color: #fff; }
+
+/* Star twinkle */
+@keyframes twinkle { 0%,100%{opacity:.15} 50%{opacity:.9} }
+.rs-star { position: absolute; border-radius: 9999px; background: #fff; animation: twinkle 4s ease-in-out infinite; }
+
+@keyframes spin-slow { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+.rs-spin-slow { animation: spin-slow 60s linear infinite; }
+
+@keyframes ticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.rs-ticker { animation: ticker 40s linear infinite; }
+
+.rs-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+.rs-scrollbar::-webkit-scrollbar-thumb { background: rgba(226,158,56,0.4); border-radius: 8px; }
