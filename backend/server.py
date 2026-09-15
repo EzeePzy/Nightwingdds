@@ -19,6 +19,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 
 from astro import compute_chart, recommend_gemstone, RASHIS, GEMSTONES, NAKSHATRAS
+from geo import geocode
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("rashisense")
@@ -103,6 +104,15 @@ class BirthDetails(BaseModel):
     time: str         # HH:MM (24h)
     place: str
     problem: Optional[str] = ""
+
+
+class ProfileInput(BaseModel):
+    name: str
+    relation: Optional[str] = "Self"
+    gender: Optional[str] = "Not specified"
+    dob: str
+    time: str
+    place: str
 
 
 # ---------- LLM ----------
@@ -198,7 +208,9 @@ async def calculate(inp: BirthDetails, request: Request,
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date or time format. Use YYYY-MM-DD and HH:MM (24h).")
 
-    chart = compute_chart(dt)
+    loc = geocode(inp.place)
+    chart = compute_chart(dt, loc["lat"], loc["lon"], loc["tz"])
+    chart["birth_location"] = loc
     gem = recommend_gemstone(chart, inp.problem or "")
     reading = await generate_ai_reading(chart, inp, gem)
 
@@ -247,6 +259,96 @@ async def delete_reading(reading_id: str, user: dict = Depends(get_current_user)
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Reading not found")
     return {"ok": True}
+
+
+# ---------- Family profiles ----------
+@api_router.get("/profiles")
+async def list_profiles(user: dict = Depends(get_current_user)):
+    docs = await db.profiles.find({"user_id": str(user["_id"])}).sort("created_at", -1).to_list(100)
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+    return docs
+
+
+@api_router.post("/profiles")
+async def create_profile(inp: ProfileInput, user: dict = Depends(get_current_user)):
+    doc = {**inp.model_dump(), "user_id": str(user["_id"]),
+           "created_at": datetime.now(timezone.utc).isoformat()}
+    res = await db.profiles.insert_one(doc)
+    doc["id"] = str(res.inserted_id)
+    doc.pop("_id", None)
+    return doc
+
+
+@api_router.delete("/profiles/{profile_id}")
+async def delete_profile(profile_id: str, user: dict = Depends(get_current_user)):
+    res = await db.profiles.delete_one({"_id": ObjectId(profile_id), "user_id": str(user["_id"])})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return {"ok": True}
+
+
+# ---------- Daily / Weekly / Yearly horoscope ----------
+async def generate_horoscope(rashi: dict, period: str, date_key: str) -> dict:
+    fallback = {
+        "overview": f"The cosmos turns in favour of {rashi['sa']} ({rashi['en']}) this {period}. Your ruling planet {rashi['planet']} lends steady momentum - trust your rhythm and act with intention.",
+        "career": "Focus and consistency open a door you have been waiting on. A senior figure notices your effort.",
+        "love": "Warmth flows in close relationships; express what you feel rather than assuming it is understood.",
+        "health": "Energy is good when you protect your rest. Hydration and a short daily walk keep you balanced.",
+        "finance": "Money matters stabilise. Avoid one impulsive purchase and a small saving grows meaningfully.",
+        "lucky_color": {"Fire": "Saffron", "Earth": "Emerald Green", "Air": "Sky Blue", "Water": "Pearl White"}.get(rashi["element"], "Gold"),
+        "lucky_number": (sum(ord(c) for c in date_key + rashi["key"]) % 9) + 1,
+    }
+    if not EMERGENT_LLM_KEY:
+        return fallback
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        system = ("You are a warm, precise Vedic astrologer. Respond ONLY with a JSON object, no markdown. "
+                  "Keys: overview, career, love, health, finance, lucky_color, lucky_number (integer). "
+                  "Each text value 1-2 specific, encouraging sentences.")
+        prompt = (f"Write the {period} horoscope for rashi {rashi['sa']} ({rashi['en']}), ruling planet "
+                  f"{rashi['planet']}, element {rashi['element']}, for the period identified as {date_key}. "
+                  f"Make it feel fresh and specific to this {period}.")
+        chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"horo-{rashi['key']}-{period}-{date_key}",
+                       system_message=system).with_model("anthropic", "claude-sonnet-4-6")
+        resp = await chat.send_message(UserMessage(text=prompt))
+        import json, re
+        text = resp if isinstance(resp, str) else str(resp)
+        m = re.search(r"\{.*\}", text, re.DOTALL)
+        if m:
+            data = json.loads(m.group(0))
+            for k, v in fallback.items():
+                data.setdefault(k, v)
+            return data
+        return fallback
+    except Exception as e:
+        logger.warning(f"Horoscope AI failed, using fallback: {e}")
+        return fallback
+
+
+@api_router.get("/horoscope/{rashi_key}")
+async def horoscope(rashi_key: str, period: str = "daily"):
+    rashi = next((r for r in RASHIS if r["key"] == rashi_key), None)
+    if not rashi:
+        raise HTTPException(status_code=404, detail="Unknown rashi")
+    if period not in ("daily", "weekly", "yearly"):
+        period = "daily"
+    now = datetime.now(timezone.utc)
+    if period == "daily":
+        date_key = now.strftime("%Y-%m-%d")
+    elif period == "weekly":
+        date_key = now.strftime("%Y-W%U")
+    else:
+        date_key = now.strftime("%Y")
+
+    cached = await db.horoscopes.find_one({"rashi": rashi_key, "period": period, "date_key": date_key})
+    if cached:
+        return {"rashi": rashi, "period": period, "date_key": date_key, "forecast": cached["forecast"]}
+
+    forecast = await generate_horoscope(rashi, period, date_key)
+    await db.horoscopes.insert_one({"rashi": rashi_key, "period": period, "date_key": date_key,
+                                    "forecast": forecast, "created_at": now.isoformat()})
+    return {"rashi": rashi, "period": period, "date_key": date_key, "forecast": forecast}
 
 
 # ---------- Admin ----------

@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { User, Calendar, Clock, MapPin, HelpCircle, Sparkles, Save } from "lucide-react";
+import { User, Calendar, Clock, MapPin, HelpCircle, Sparkles, Save, Users } from "lucide-react";
 import api, { formatApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import StarField from "../components/StarField";
@@ -11,10 +12,43 @@ const empty = { name: "", gender: "Male", dob: "", time: "", place: "", problem:
 
 export default function Calculator() {
   const { user, loading } = useAuth();
+  const loc = useLocation();
   const [form, setForm] = useState(empty);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [profiles, setProfiles] = useState([]);
   const upd = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  useEffect(() => {
+    if (loc.state?.profile) {
+      const p = loc.state.profile;
+      setForm({ name: p.name || "", gender: p.gender || "Male", dob: p.dob || "", time: p.time || "", place: p.place || "", problem: "" });
+    }
+  }, [loc.state]);
+
+  const loadProfiles = () => {
+    if (user) api.get("/profiles").then((r) => setProfiles(r.data)).catch(() => {});
+  };
+  useEffect(loadProfiles, [user]);
+
+  const applyProfile = (p) => {
+    setForm({ name: p.name || "", gender: p.gender || "Male", dob: p.dob || "", time: p.time || "", place: p.place || "", problem: form.problem });
+    toast.success(`Loaded ${p.name}'s details`);
+  };
+
+  const saveProfile = async () => {
+    if (!form.name || !form.dob || !form.time || !form.place) {
+      toast.error("Fill name, date, time and place first.");
+      return;
+    }
+    try {
+      await api.post("/profiles", { name: form.name, relation: "Family", gender: form.gender, dob: form.dob, time: form.time, place: form.place });
+      toast.success(`Saved ${form.name} to your profiles`);
+      loadProfiles();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -47,6 +81,19 @@ export default function Calculator() {
         </div>
 
         <form onSubmit={submit} className="rs-card mx-auto max-w-3xl p-6 sm:p-8">
+          {user && profiles.length > 0 && (
+            <div className="mb-5">
+              <span className="mb-2 flex items-center gap-1.5 text-xs uppercase tracking-wider text-amber-400/80"><Users className="h-3.5 w-3.5" /> Load a saved profile</span>
+              <div className="flex flex-wrap gap-2">
+                {profiles.map((p) => (
+                  <button key={p.id} type="button" onClick={() => applyProfile(p)} data-testid={`calc-profile-chip-${p.id}`}
+                    className="rounded-full border border-amber-500/25 bg-white/5 px-3 py-1.5 text-sm text-slate-200 hover:border-amber-400/60 hover:text-amber-200 transition-colors">
+                    {p.name} <span className="text-slate-500">· {p.relation}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <Field label="Full Name" icon={User}>
               <input data-testid="birth-form-name-input" value={form.name} onChange={upd("name")} placeholder="e.g. Arjun Sharma" className={inputCls} />
@@ -83,6 +130,11 @@ export default function Calculator() {
           <button type="submit" disabled={busy} data-testid="birth-form-submit-button" className="rs-gold-btn mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-base disabled:opacity-60">
             {busy ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0B0D1B]/40 border-t-[#0B0D1B]" /> Consulting the stars…</> : <><Sparkles className="h-5 w-5" /> Reveal My Rashi & Gemstone</>}
           </button>
+          {user && (
+            <button type="button" onClick={saveProfile} data-testid="calc-save-profile-button" className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 py-3 text-sm text-amber-200 hover:border-amber-400/60 transition-colors">
+              <Save className="h-4 w-4" /> Save these details as a family profile
+            </button>
+          )}
         </form>
 
         {result && (

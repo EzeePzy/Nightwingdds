@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Sparkles, Trash2, Moon, Gem, ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { Sparkles, Trash2, Moon, Gem, ChevronDown, ChevronUp, Plus, Users, Wand2 } from "lucide-react";
 import api, { formatApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import StarField from "../components/StarField";
@@ -9,15 +9,28 @@ import ResultView from "../components/ResultView";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const nav = useNavigate();
   const [readings, setReadings] = useState([]);
+  const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState(null);
 
   const load = () => {
     setLoading(true);
     api.get("/readings").then((r) => setReadings(r.data)).catch(() => {}).finally(() => setLoading(false));
+    api.get("/profiles").then((r) => setProfiles(r.data)).catch(() => {});
   };
   useEffect(load, []);
+
+  const removeProfile = async (id) => {
+    try {
+      await api.delete(`/profiles/${id}`);
+      setProfiles((p) => p.filter((x) => x.id !== id));
+      toast.success("Profile removed");
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
 
   const remove = async (id) => {
     try {
@@ -45,6 +58,32 @@ export default function Dashboard() {
           <StatCard icon={Sparkles} label="Saved Readings" value={readings.length} />
           <StatCard icon={Moon} label="Latest Rashi" value={readings[0]?.chart?.moon_sign?.sa || "—"} />
           <StatCard icon={Gem} label="Latest Gemstone" value={readings[0]?.gemstone?.name || "—"} />
+        </div>
+
+        {/* Family profiles */}
+        <div className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 font-serif text-2xl text-amber-100"><Users className="h-5 w-5 text-amber-400" /> Family & Friends</h2>
+            <Link to="/calculator" className="text-sm text-amber-300 hover:underline">+ Add via Calculator</Link>
+          </div>
+          {profiles.length === 0 ? (
+            <div className="rs-card p-6 text-center text-sm text-slate-400">No saved profiles yet. On the calculator, fill someone's birth details and tap "Save as a family profile".</div>
+          ) : (
+            <div data-testid="dashboard-saved-profiles-list" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {profiles.map((p) => (
+                <div key={p.id} className="rs-card flex items-center justify-between p-4">
+                  <div>
+                    <div className="font-serif text-lg text-amber-50">{p.name}</div>
+                    <div className="text-xs text-slate-400">{p.relation} · {p.dob} · {p.place}</div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => nav("/calculator", { state: { profile: p } })} data-testid={`profile-use-${p.id}`} title="Calculate" className="flex h-9 w-9 items-center justify-center rounded-full border border-amber-500/30 text-amber-200 hover:bg-amber-500/10"><Wand2 className="h-4 w-4" /></button>
+                    <button onClick={() => removeProfile(p.id)} data-testid={`profile-delete-${p.id}`} title="Delete" className="flex h-9 w-9 items-center justify-center rounded-full border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <h2 className="mb-4 font-serif text-2xl text-amber-100">Reading History</h2>

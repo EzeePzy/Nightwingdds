@@ -11,6 +11,7 @@ export default function Navbar() {
 
   const links = [
     { to: "/calculator", label: "Calculator", id: "nav-link-calculator" },
+    { to: "/horoscope", label: "Horoscope", id: "nav-link-horoscope" },
     { to: "/gemstones", label: "Gemstones", id: "nav-link-gemstones" },
   ];
   if (user) links.push({ to: "/dashboard", label: "Dashboard", id: "nav-link-dashboard" });

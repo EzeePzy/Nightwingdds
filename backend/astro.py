@@ -1,9 +1,12 @@
-"""Vedic astrology calculation engine and reference data for Rashisense."""
-from datetime import datetime, timezone
-import math
+"""Vedic astrology calculation engine and reference data for Rashisense.
 
-# Sidereal ayanamsa (Lahiri approx for modern era)
-AYANAMSA = 24.1
+Uses the Swiss Ephemeris (pyswisseph) with the Lahiri (Chitrapaksha) ayanamsa
+for astronomically precise sidereal positions, plus birth-place latitude,
+longitude and timezone for an accurate Ascendant (Lagna).
+"""
+from datetime import datetime
+import pytz
+import swisseph as swe
 
 RASHIS = [
     {"key": "mesha", "en": "Aries", "sa": "Mesha", "symbol": "Ram", "element": "Fire", "planet": "Mars", "planet_sa": "Mangal"},
@@ -42,67 +45,59 @@ GEMSTONES = {
 }
 
 
-def _julian_day(dt: datetime) -> float:
-    y, m = dt.year, dt.month
-    d = dt.day + (dt.hour + dt.minute / 60.0) / 24.0
-    if m <= 2:
-        y -= 1
-        m += 12
-    a = y // 100
-    b = 2 - a + a // 4
-    jd = math.floor(365.25 * (y + 4716)) + math.floor(30.6001 * (m + 1)) + d + b - 1524.5
-    return jd
+swe.set_sid_mode(swe.SIDM_LAHIRI)
+_SID_FLAG = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
+_PLANET_CODES = {
+    "Sun": swe.SUN, "Moon": swe.MOON, "Mars": swe.MARS, "Mercury": swe.MERCURY,
+    "Jupiter": swe.JUPITER, "Venus": swe.VENUS, "Saturn": swe.SATURN, "Rahu": swe.MEAN_NODE,
+}
 
 
-def _norm(deg: float) -> float:
-    return deg % 360.0
+def _rashi_of(longitude: float):
+    return RASHIS[int(longitude % 360 // 30)]
 
 
-def _sidereal(tropical_long: float) -> float:
-    return _norm(tropical_long - AYANAMSA)
+def compute_chart(birth_dt: datetime, lat: float, lon: float, tz_name: str = "Asia/Kolkata"):
+    """Astronomically precise sidereal (Lahiri) Vedic chart.
 
+    birth_dt: naive local datetime at the birth place.
+    lat/lon: birth place coordinates. tz_name: IANA timezone of the place.
+    """
+    try:
+        tz = pytz.timezone(tz_name)
+    except Exception:
+        tz = pytz.timezone("Asia/Kolkata")
+    utc_dt = tz.localize(birth_dt).astimezone(pytz.utc)
+    jd = swe.julday(utc_dt.year, utc_dt.month, utc_dt.day,
+                    utc_dt.hour + utc_dt.minute / 60.0 + utc_dt.second / 3600.0)
 
-def compute_chart(birth_dt: datetime):
-    """Deterministic simplified Vedic chart from a UTC-naive local birth datetime."""
-    jd = _julian_day(birth_dt)
-    d = jd - 2451545.0
+    ayanamsa = swe.get_ayanamsa_ut(jd)
 
-    # Mean longitudes (tropical, degrees)
-    moon_long = _norm(218.316 + 13.176396 * d)
-    sun_long = _norm(280.460 + 0.9856474 * d)
+    # Sidereal planetary longitudes
+    positions = {}
+    for name, code in _PLANET_CODES.items():
+        positions[name] = swe.calc_ut(jd, code, _SID_FLAG)[0][0] % 360.0
+    positions["Ketu"] = (positions["Rahu"] + 180.0) % 360.0
 
-    moon_sid = _sidereal(moon_long)
-    sun_sid = _sidereal(sun_long)
+    moon_long = positions["Moon"]
+    sun_long = positions["Sun"]
 
-    moon_index = int(moon_sid // 30)
-    sun_index = int(sun_sid // 30)
+    # Ascendant (Lagna) from lat/lon + sidereal time
+    ascmc = swe.houses_ex(jd, lat, lon, b"W", _SID_FLAG)[1]
+    asc_long = ascmc[0] % 360.0
 
-    # Ascendant (Lagna): rough model advancing one sign every ~2 sidereal hours from sun sign
-    hour_frac = birth_dt.hour + birth_dt.minute / 60.0
-    asc_index = int((sun_index + math.floor(hour_frac / 2.0)) % 12)
+    moon_rashi = _rashi_of(moon_long)
+    sun_rashi = _rashi_of(sun_long)
+    asc_rashi = _rashi_of(asc_long)
 
     # Nakshatra + pada from sidereal moon
     nak_span = 360.0 / 27.0
-    nak_index = int(moon_sid // nak_span)
-    within = moon_sid - nak_index * nak_span
+    nak_index = int(moon_long // nak_span)
+    within = moon_long - nak_index * nak_span
     pada = int(within // (nak_span / 4.0)) + 1
 
-    moon_rashi = RASHIS[moon_index]
-    sun_rashi = RASHIS[sun_index]
-    asc_rashi = RASHIS[asc_index]
-
-    # Approximate planetary sign placements (deterministic mean-motion model)
-    planets = {}
-    speeds = {"Mars": 0.524, "Mercury": 1.383, "Jupiter": 0.0831, "Venus": 1.602, "Saturn": 0.0334}
-    epochs = {"Mars": 355.43, "Mercury": 252.25, "Jupiter": 34.35, "Venus": 181.98, "Saturn": 50.08}
-    for p in speeds:
-        lon = _sidereal(_norm(epochs[p] + speeds[p] * d))
-        planets[p] = RASHIS[int(lon // 30)]["sa"]
-    planets["Sun"] = sun_rashi["sa"]
-    planets["Moon"] = moon_rashi["sa"]
-    rahu_long = _sidereal(_norm(125.04 - 0.0529539 * d))
-    planets["Rahu"] = RASHIS[int(rahu_long // 30)]["sa"]
-    planets["Ketu"] = RASHIS[int(_norm(rahu_long + 180) // 30)]["sa"]
+    planet_positions = {p: _rashi_of(lng)["sa"] for p, lng in positions.items()}
+    planet_degrees = {p: round(lng % 30.0, 2) for p, lng in positions.items()}
 
     return {
         "moon_sign": moon_rashi,
@@ -112,7 +107,10 @@ def compute_chart(birth_dt: datetime):
         "pada": pada,
         "ruling_planet": moon_rashi["planet"],
         "ruling_planet_sa": moon_rashi["planet_sa"],
-        "planet_positions": planets,
+        "planet_positions": planet_positions,
+        "planet_degrees": planet_degrees,
+        "ayanamsa": round(ayanamsa, 4),
+        "accuracy": "swiss_ephemeris_lahiri",
     }
 
 

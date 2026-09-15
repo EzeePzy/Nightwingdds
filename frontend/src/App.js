@@ -8,6 +8,7 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Calculator from "./pages/Calculator";
 import Gemstones from "./pages/Gemstones";
+import Horoscope from "./pages/Horoscope";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 
@@ -22,6 +23,7 @@ function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/calculator" element={<Calculator />} />
             <Route path="/gemstones" element={<Gemstones />} />
+            <Route path="/horoscope" element={<Horoscope />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
           </Routes>

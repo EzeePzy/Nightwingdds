@@ -48,8 +48,18 @@ export default function ResultView({ result }) {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Kundali */}
         <div className="rs-card p-6">
-          <h3 className="mb-1 font-serif text-2xl text-amber-100">Your Kundali</h3>
-          <p className="mb-5 text-sm text-slate-400">North Indian chart · {chart.moon_sign.en} Moon · {chart.moon_sign.element} element</p>
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="font-serif text-2xl text-amber-100">Your Kundali</h3>
+            {chart.accuracy === "swiss_ephemeris_lahiri" && (
+              <span className="flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] uppercase tracking-wider text-amber-300">
+                <Sparkles className="h-3 w-3" /> Swiss Ephemeris · Lahiri
+              </span>
+            )}
+          </div>
+          <p className="mb-1 text-sm text-slate-400">North Indian chart · {chart.moon_sign.en} Moon · {chart.moon_sign.element} element</p>
+          {chart.birth_location && (
+            <p className="mb-5 text-xs text-slate-500">📍 {chart.birth_location.matched} · {chart.birth_location.tz}{typeof chart.ayanamsa === "number" ? ` · Ayanamsa ${chart.ayanamsa}°` : ""}</p>
+          )}
           <KundaliChart chart={chart} />
           <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs">
             {Object.entries(chart.planet_positions).map(([p, s]) => (
