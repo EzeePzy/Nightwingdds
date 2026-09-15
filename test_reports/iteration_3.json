@@ -1,0 +1,17 @@
+{
+  "summary": "Verified western_sun_sign feature end-to-end. Backend returns chart.western_sun_sign={en,sa}; for 1992-11-10 Mumbai western=Scorpio while Vedic Moon (Mesha) and Vedic Sun (Tula) differ. For 1990-04-05 Mumbai western=Aries. All regression fields (moon_sign, sun_sign, ascendant, nakshatra, pada, planet_positions, planet_degrees, ayanamsa, accuracy=swiss_ephemeris_lahiri, gemstone, reading) still present. Frontend Calculator shows rashi-result-western-sign=Scorpio, rashi-result-moon-sign=Mesha, plus explanatory info banner. All 32 pytest tests pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_western_sign.py",
+    "/app/test_reports/pytest/western_sign.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": ["/app/backend/tests/test_western_sign.py"],
+  "success_rate": {"backend": "100% (32/32)", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend and frontend for western_sun_sign bug-fix verified. Full suite green."
+}
