@@ -63,6 +63,10 @@ chainlit.md
 
 # Data and databases
 agenthub/agents/youtube/db
+backend/data/
+*.db
+*.db-wal
+*.db-shm
 
 # Archive files and large assets
 **/*.zip
@@ -89,3 +93,6 @@ android-sdk/
 credentials.json
 *.key
 .credentials
+
+# Keep committed env template
+!backend/.env.example

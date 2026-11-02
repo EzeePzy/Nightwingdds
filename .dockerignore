@@ -1,0 +1,16 @@
+.git
+.gitignore
+.emergent
+memory
+test_reports
+tests
+backend/tests
+backend/data
+backend/__pycache__
+backend/.env
+frontend/node_modules
+frontend/build
+frontend/.env
+**/__pycache__
+**/*.pyc
+**/.DS_Store

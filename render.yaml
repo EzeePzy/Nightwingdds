@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: rashify
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/
+    autoDeploy: true
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SQLITE_PATH
+        value: /tmp/rashify.db
+      - key: ADMIN_EMAIL
+        value: admin@rashisense.com
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        value: Rashi@2026
+      - key: PDF_PRICE_INR
+        value: "0"
+      - key: CORS_ORIGINS
+        value: "*"

@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+// Same-origin deployment: when REACT_APP_BACKEND_URL is unset the API is
+// served by the same FastAPI process under /api.
+const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
 export const API = `${BACKEND_URL}/api`;
 
 const api = axios.create({ baseURL: API });
