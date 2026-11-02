@@ -1,8 +1,8 @@
 # ---------- Build the React frontend ----------
 FROM node:22-alpine AS web
 WORKDIR /app/frontend
-COPY frontend/package.json ./
-RUN npm install --legacy-peer-deps --no-audit --no-fund
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --legacy-peer-deps --no-audit --no-fund
 COPY frontend/ ./
 ENV CI=false
 ENV REACT_APP_BACKEND_URL=""
